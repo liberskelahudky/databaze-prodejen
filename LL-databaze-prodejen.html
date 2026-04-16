@@ -311,18 +311,18 @@ body {
 .btn-ghost:hover { background: var(--surface2); color: var(--text2); }
 
 /* ═══ FORM ═══ */
-.field-group { margin-bottom: 32px; }
+.field-group { margin-bottom: 22px; }
 .field-group-title {
   font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--text3); margin-bottom: 16px;
-  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  color: var(--text3); margin-bottom: 12px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
 }
-.field-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.field   { display: flex; flex-direction: column; gap: 6px; }
+.field-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field   { display: flex; flex-direction: column; gap: 5px; }
 .field-label { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text3); }
 .field-input, .field-select {
-  padding: 11px 14px; font-family: var(--font); font-size: 14px; font-weight: 400;
+  padding: 9px 12px; font-family: var(--font); font-size: 13px; font-weight: 400;
   border: none; border-radius: var(--r);
   background: var(--surface2); color: var(--text);
   outline: none; transition: all .18s; width: 100%;
@@ -337,8 +337,16 @@ body {
 .field-check {
   display: flex; align-items: center; gap: 10px;
   font-size: 14px; font-weight: 500; cursor: pointer; padding: 6px 0;
+  flex-direction: row;
 }
-.field-check input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand); cursor: pointer; border-radius: 5px; }
+.field-check input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand); cursor: pointer; border-radius: 5px; flex-shrink: 0; }
+/* Řada checkboxů vedle sebe */
+.check-row {
+  display: flex; flex-wrap: wrap; gap: 4px 0;
+}
+.check-row .field-check {
+  width: 50%; padding: 7px 0;
+}
 
 /* ═══ HOURS DISPLAY ═══ */
 .hours-display { display: grid; grid-template-columns: repeat(7,1fr); gap: 8px; }
@@ -355,18 +363,19 @@ body {
 
 /* ═══ HOURS EDITOR ═══ */
 .hours-editor { display: flex; flex-direction: column; gap: 6px; }
-.he-header { display: grid; grid-template-columns: 90px 1fr 14px 1fr auto; gap: 4px 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-.he-grid   { display: grid; grid-template-columns: 90px 1fr 14px 1fr auto; gap: 4px 8px; align-items: center; }
-.he-day  { font-size: 12px; font-weight: 600; color: var(--text2); }
+.he-header { display: grid; grid-template-columns: 100px 90px 14px 90px 1fr 28px; gap: 4px 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.he-grid   { display: grid; grid-template-columns: 100px 90px 14px 90px 1fr 28px; gap: 4px 8px; align-items: center; }
+.he-day  { font-size: 13px; font-weight: 600; color: var(--text2); }
 .he-sep  { text-align: center; font-size: 12px; color: var(--text3); }
 .he-input {
-  padding: 8px 12px; font-family: var(--font); font-size: 13px;
+  padding: 8px 10px; font-family: var(--font); font-size: 14px; font-weight: 500;
   border: none; border-radius: var(--r);
   background: var(--surface2); color: var(--text); outline: none;
-  width: 100%; transition: all .15s;
+  width: 100%; transition: all .15s; text-align: center; letter-spacing: .03em;
 }
 .he-input:focus { background: white; box-shadow: 0 0 0 2px var(--brand-l); }
-.he-input:disabled { opacity: .35; }
+.he-input:disabled { opacity: .3; }
+.he-input::placeholder { color: var(--text3); font-weight: 400; font-size: 12px; }
 .he-zav, .he-closed {
   font-size: 11px; font-weight: 600; padding: 6px 12px;
   border: none; border-radius: 99px;
@@ -553,6 +562,7 @@ body {
     <button class="nav-tab" onclick="showView('store')">Detail prodejny</button>
     <button class="nav-tab" onclick="showView('plakat')">🖨 Plakát OD</button>
     <button class="nav-tab" onclick="showView('zmrzlina')">🍦 Zmrzliny</button>
+    <button class="nav-tab" onclick="showView('svatky')">📅 Státní svátky</button>
   </div>
   <div class="nav-right">
     <button class="nav-tab" onclick="debugSheets()" style="color:rgba(255,255,255,0.7);">🔧 Test Sheets</button>
@@ -707,7 +717,7 @@ body {
       <div class="detail-tabs">
         <button class="dtab active" onclick="switchDTab('zakladni',this)">Základní info</button>
         <button class="dtab" onclick="switchDTab('hodiny',this)">Otevírací doba</button>
-        <button class="dtab" onclick="switchDTab('vybaveni',this)">Vybavení</button>
+        <button class="dtab" onclick="switchDTab('zmrzlina',this)">🍦 Zmrzlina</button>
         <button class="dtab" onclick="switchDTab('svatky',this)">Státní svátky</button>
         <button class="dtab" onclick="switchDTab('checklist',this)">Checklist změn</button>
         <button class="dtab" onclick="switchDTab('poznamky',this)">Poznámky</button>
@@ -765,29 +775,51 @@ body {
                 <a id="f-gmaps-link" href="#" target="_blank" rel="noopener" class="btn" style="flex-shrink:0;text-decoration:none;display:none;padding:9px 14px;">↗ Maps</a>
               </div>
             </div>
+            <div class="field">
+              <label class="field-label">Web prodejny (liberskelahudky.cz)</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="url" class="field-input" id="f-web" placeholder="https://…" oninput="onFieldChange()" style="flex:1;" />
+                <a id="f-web-link" href="#" target="_blank" rel="noopener" class="btn" style="flex-shrink:0;text-decoration:none;display:none;padding:9px 14px;">↗ Web</a>
+              </div>
+            </div>
             <div class="field"><label class="field-label">Google Drive — odkaz</label><input type="url" class="field-input" id="f-drive" oninput="onFieldChange()" /></div>
+            <div class="field">
+              <label class="field-label">Firmy.cz</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="url" class="field-input" id="f-firmy" placeholder="URL profilu" oninput="onFieldChange();updateFirmyLink()" style="flex:1;" />
+                <a id="f-firmy-link" href="#" target="_blank" rel="noopener" class="btn" style="flex-shrink:0;text-decoration:none;display:none;padding:9px 14px;">↗ Firmy</a>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="field-group">
           <div class="field-group-title">Dostupnost</div>
-          <div class="field-grid" style="margin-top:8px;">
-            <div class="field field-check"><input type="checkbox" id="f-barrier" onchange="onFieldChange()" /><label class="field-label" for="f-barrier">Bezbariérový přístup</label></div>
-            <div class="field field-check"><input type="checkbox" id="f-seating" onchange="onFieldChange()" /><label class="field-label" for="f-seating">Posezení</label></div>
-            <div class="field field-check"><input type="checkbox" id="f-eshop" onchange="onFieldChange()" /><label class="field-label" for="f-eshop">Výdejna e-shopu</label></div>
-            <div class="field field-check"><input type="checkbox" id="f-kiosek" onchange="onFieldChange()" /><label class="field-label" for="f-kiosek">Kiosek</label></div>
-            <div class="field field-check"><input type="checkbox" id="f-vyroba" onchange="onFieldChange()" /><label class="field-label" for="f-vyroba">Výroba na prodejně</label></div>
+          <div class="check-row">
+            <div class="field-check"><input type="checkbox" id="f-barrier" onchange="onFieldChange()" /><label for="f-barrier">Bezbariérový přístup</label></div>
+            <div class="field-check"><input type="checkbox" id="f-seating" onchange="onFieldChange()" /><label for="f-seating">Posezení</label></div>
+            <div class="field-check"><input type="checkbox" id="f-eshop" onchange="onFieldChange()" /><label for="f-eshop">Výdejna e-shopu</label></div>
+            <div class="field-check"><input type="checkbox" id="f-kiosek" onchange="onFieldChange()" /><label for="f-kiosek">Kiosek</label></div>
+            <div class="field-check"><input type="checkbox" id="f-vyroba" onchange="onFieldChange()" /><label for="f-vyroba">Výroba na prodejně</label></div>
           </div>
         </div>
       </div>
 
       <!-- TAB: OTEVÍRACÍ DOBA -->
       <div class="tab-panel" id="tp-hodiny">
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;" onclick="heCopyRange(0,4)">Po–Pá stejně</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;" onclick="heCopyRange(5,6)">So–Ne stejně</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;" onclick="heCopyRange(0,6)">Vše stejně</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;color:var(--closed);border:1px solid var(--closed-bg);" onclick="heCloseRange(5,6)">So–Ne zavřeno</button>
+        </div>
         <div class="hours-editor">
           <div class="he-grid">
             <div class="he-header">Den</div>
             <div class="he-header">Od</div>
+            <div></div>
             <div class="he-header">Do</div>
+            <div></div>
             <div></div>
           </div>
           <div id="he-rows"></div>
@@ -796,38 +828,49 @@ body {
       </div>
 
       <!-- TAB: VYBAVENÍ -->
-      <div class="tab-panel" id="tp-vybaveni">
+      <!-- TAB: ZMRZLINA -->
+      <div class="tab-panel" id="tp-zmrzlina">
         <div class="field-group">
-          <div class="field-group-title">Počty kusů</div>
+          <div class="field-group-title">Typ výdeje zmrzliny</div>
+          <div class="check-row" style="margin-bottom:16px;">
+            <div class="field-check"><input type="checkbox" id="f-zmrz-vydej" onchange="onFieldChange()" /><label for="f-zmrz-vydej">Vydává zmrzlinu (stroj / kopečky)</label></div>
+            <div class="field-check"><input type="checkbox" id="f-okenko" onchange="onFieldChange()" /><label for="f-okenko">Má zmrzlinové okénko / bar</label></div>
+          </div>
           <div class="field-grid">
-            <div class="field"><label class="field-label">Zmrzlinové páky (počet)</label><input type="number" class="field-input" id="f-zmrzlina" min="0" oninput="onFieldChange()" /></div>
-            <div class="field"><label class="field-label">NFC stojánek (počet)</label><input type="number" class="field-input" id="f-nfc" min="0" oninput="onFieldChange()" /></div>
-            <div class="field"><label class="field-label">LCD displej na podkladně</label><input type="number" class="field-input" id="f-lcd" min="0" oninput="onFieldChange()" /></div>
-            <div class="field"><label class="field-label">Vchodové dveře (počet)</label><input type="number" class="field-input" id="f-dvere" min="0" oninput="onFieldChange()" /></div>
+            <div class="field">
+              <label class="field-label">Počet pák / strojů</label>
+              <input type="number" class="field-input" id="f-zmrzlina" min="0" oninput="onFieldChange()" />
+            </div>
+            <div class="field">
+              <label class="field-label">Otevírací doba zmrzliny</label>
+              <input type="text" class="field-input" id="f-zmrz-hours" placeholder="např. Po-Pá 10-18, So-Ne 10-17" oninput="onFieldChange()" />
+            </div>
           </div>
         </div>
         <div class="field-group">
-          <div class="field-group-title">Kuchyňské vybavení</div>
-          <div class="field-grid">
-            <div class="field"><label class="field-label">Kávovar (typ/ks)</label><input type="text" class="field-input" id="f-kavovar" oninput="onFieldChange()" /></div>
-            <div class="field"><label class="field-label">Lednice (počet)</label><input type="number" class="field-input" id="f-lednice" min="0" oninput="onFieldChange()" /></div>
-            <div class="field"><label class="field-label">Váhy (počet)</label><input type="number" class="field-input" id="f-vahy" min="0" oninput="onFieldChange()" /></div>
-            <div class="field"><label class="field-label">Pokladní systém</label><input type="text" class="field-input" id="f-pos" oninput="onFieldChange()" /></div>
+          <div class="field-group-title">Fotka okénka / výdeje</div>
+          <div class="field">
+            <label class="field-label">URL fotky</label>
+            <input type="url" class="field-input" id="f-zmrz-foto" placeholder="https://…" oninput="onFieldChange();previewZmrzFoto()" />
+          </div>
+          <div id="zmrz-foto-preview" style="margin-top:10px;display:none;">
+            <img id="zmrz-foto-img" src="" alt="náhled" style="max-width:340px;max-height:220px;border-radius:var(--r2);object-fit:cover;box-shadow:var(--sh-sm);" />
           </div>
         </div>
         <div class="field-group">
-          <div class="field-group-title">Zmrzlinové okénko / přísálí</div>
-          <div class="field-grid field-grid-2">
-            <div class="field field-check"><input type="checkbox" id="f-okenko" onchange="onFieldChange()" /><label class="field-label" for="f-okenko">Má okénko / zmrzlinový bar</label></div>
-          </div>
-          <div class="field-grid" style="margin-top:8px;" id="zmrz-hours-wrap">
-            <div class="field"><label class="field-label">Otevírací doba zmrzliny</label><input type="text" class="field-input" id="f-zmrz-hours" placeholder="např. po-pá 10-18, so-ne 10-17" oninput="onFieldChange()" /></div>
-          </div>
+          <div class="field-group-title">Poznámka ke zmrzlině</div>
+          <div class="field"><textarea id="f-zmrz-note" rows="3" placeholder="Zvláštnosti, sezónní provoz, přísálí…" oninput="onFieldChange()"></textarea></div>
         </div>
       </div>
 
       <!-- TAB: STÁTNÍ SVÁTKY -->
       <div class="tab-panel" id="tp-svatky">
+        <div id="sv-ref-hours" style="background:var(--surface2);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+          <span style="font-weight:600;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Běžná otevírací doba:</span>
+          <span id="sv-ref-wday"></span>
+          <span id="sv-ref-sat"></span>
+          <span id="sv-ref-sun"></span>
+        </div>
         <div class="section-notice">
           <strong>Zákon č. 245/2000 Sb.:</strong> Prodejna nemusí být ve svátek otevřena. Pokud otevřena je, zaměstnancům náleží příplatek za sváteční práci.<br>
           Po zadání speciálních hodin je nutné aktualizovat: <strong>Google Maps</strong> (speciální hodiny), <strong>Wolt</strong> (portál / email 48 h předem), <strong>Firmy.cz</strong> (poznámka), <strong>web</strong>.
@@ -930,9 +973,6 @@ body {
 
       <!-- EDITOR -->
       <div>
-        <div class="view-title" style="margin-bottom:4px;">Plakát otevírací doby</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Generátor A4 pro tisk</div>
-
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-bottom:12px;">
           <div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Prodejna</div>
           <select id="pk-store" onchange="plakatLoadStore()" style="width:100%;padding:8px 10px;font-size:13px;font-family:var(--font-sans);border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;margin-bottom:8px;">
@@ -958,6 +998,13 @@ body {
         <div style="display:flex;gap:8px;">
           <button class="btn btn-red" onclick="printPlakat()">🖨 Tisknout / PDF</button>
           <button class="btn" onclick="plakatReset()">Vymazat</button>
+        </div>
+        <div id="pk-filename-hint" style="display:none;margin-top:10px;background:var(--brand-pale);border:1px solid var(--brand-pale2);border-radius:var(--r);padding:10px 12px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;">📄 Název souboru při uložení PDF</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <code id="pk-filename-text" style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--brand);flex:1;word-break:break-all;line-height:1.5;"></code>
+            <button onclick="copyPlakatFilename()" id="pk-copy-btn" style="flex-shrink:0;font-size:11px;font-family:var(--font);padding:4px 10px;border:1px solid var(--border);border-radius:var(--r);background:white;color:var(--text2);cursor:pointer;white-space:nowrap;">📋 Kopírovat</button>
+          </div>
         </div>
       </div>
 
@@ -1030,6 +1077,13 @@ body {
       <!-- EDITOR HODIN -->
       <div id="zmrz-editor" style="display:none;">
         <div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Hodiny zmrzliny</div>
+
+        <!-- BĚŽNÁ OD REFERENCE -->
+        <div id="zmrz-bezna-wrap" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">📋 Běžná OD prodejny</div>
+          <div id="zmrz-bezna-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
+        </div>
+
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:14px;margin-bottom:10px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
             <div>
@@ -1045,28 +1099,48 @@ body {
           <div id="zv-hours-editor"></div>
         </div>
         <button class="btn btn-red" onclick="printZmrzlinaPlakat()" style="width:100%;">🖨 Tisknout plakát zmrzliny</button>
+        <div id="zmrz-filename-hint" style="display:none;margin-top:10px;background:var(--brand-pale);border:1px solid var(--brand-pale2);border-radius:var(--r);padding:10px 12px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;">📄 Název souboru při uložení PDF</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <code id="zmrz-filename-text" style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--brand);flex:1;word-break:break-all;line-height:1.5;"></code>
+            <button onclick="copyZmrzFilename()" id="zmrz-copy-btn" style="flex-shrink:0;font-size:11px;font-family:var(--font);padding:4px 10px;border:1px solid var(--border);border-radius:var(--r);background:white;color:var(--text2);cursor:pointer;white-space:nowrap;">📋 Kopírovat</button>
+          </div>
+        </div>
       </div>
 
       <!-- NÁHLED PLAKÁTU ZMRZLINY -->
       <div id="zmrz-poster-wrap" style="display:none;">
         <div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Náhled</div>
-        <div id="zmrz-poster" style="width:480px;background:#fff9f4;padding:24px 32px 18px;display:flex;flex-direction:column;border:1px solid #ddd8d0;box-shadow:0 2px 12px rgba(0,0,0,.1);">
-          <div style="text-align:center;margin-bottom:12px;">
-            <img id="zmrz-logo" src="" style="height:56px;object-fit:contain;">
+        <div id="zmrz-poster" style="width:480px;background:white;padding:22px 30px 16px;display:flex;flex-direction:column;border:1px solid #ddd8d0;box-shadow:0 2px 12px rgba(0,0,0,.1);font-family:sans-serif;">
+          <div style="text-align:center;margin-bottom:10px;">
+            <img id="zmrz-logo" src="" style="height:44px;object-fit:contain;">
           </div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:66px;color:#6B3012;line-height:.9;letter-spacing:0;text-align:center;margin-bottom:4px;">OTEVÍRACÍ<br>DOBA</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#6B3012;letter-spacing:0;text-align:center;margin-bottom:12px;">🍦 ZMRZLINA</div>
-          <div id="zmrz-rows" style="flex:1;display:flex;flex-direction:column;gap:2px;margin-bottom:12px;"></div>
-          <hr style="border:none;border-top:1.5px solid #6B3012;opacity:.35;margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;">
-            <div style="font-size:8px;color:#6B3012;line-height:1.7;">PROVOZOVATEL: Libeřské lahůdky a.s.<br>Na Spojce 670, 252 50 Vestec<br>IČO: 06679480 &nbsp; DIČ: CZ06679480</div>
-            <div id="zmrz-vedouci-display" style="font-size:8px;color:#6B3012;line-height:1.7;text-align:right;font-weight:600;">ODPOVĚDNÝ VEDOUCÍ:<br>—<br>Tel.: —</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:#6B3012;line-height:.9;letter-spacing:0;text-align:center;margin-bottom:2px;">OTEVÍRACÍ<br>DOBA</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#6B3012;letter-spacing:0;text-align:center;margin-bottom:10px;">🍦 ZMRZLINA</div>
+          <div id="zmrz-rows" style="display:flex;flex-direction:column;gap:1px;margin-bottom:10px;"></div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#6B3012;text-align:center;margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+            <span style="flex:1;border-top:1px solid rgba(107,48,18,.35);"></span>ALERGENY<span style="flex:1;border-top:1px solid rgba(107,48,18,.35);"></span>
           </div>
-          <div style="display:flex;justify-content:center;margin-bottom:6px;">
-            <img id="zmrz-ikony" src="" style="height:54px;object-fit:contain;">
+          <div style="margin-bottom:4px;">
+            <div style="font-size:9px;font-weight:700;color:#6B3012;margin-bottom:2px;">🥛 Mléčné (alergen 7)</div>
+            <div style="font-size:8.5px;color:#3a2010;line-height:1.4;">Vanilka, Čokoláda, Jogurt, Mango, Slaný karamel, Pistácie</div>
           </div>
-          <div style="font-size:8px;color:#8a6a5a;text-align:center;line-height:1.4;margin-bottom:6px;">Podle zákona o evidenci tržeb je prodávající povinen vystavit kupujícímu účtenku. Zároveň je povinen zaevidovat přijatou tržbu u správce daně online; v případě technického výpadku pak nejpozději do 48 hodin.</div>
-          <div style="display:flex;justify-content:center;gap:10px;font-size:7px;color:#6B3012;font-weight:600;border-top:1px solid rgba(107,48,18,.2);padding-top:6px;">
+          <hr style="border:none;border-top:1px solid #d0c0b0;margin:4px 0;">
+          <div style="margin-bottom:3px;">
+            <div style="font-size:9px;font-weight:700;color:#6B3012;margin-bottom:2px;">🌱 Vegan</div>
+            <div style="font-size:8.5px;color:#3a2010;line-height:1.4;">Meloun, Mandarinka, Borůvka, Jablko, Yuzu, Višeň, Jahoda, Rybíz, Rakytník, Malina, Pomeranč, Ostružina, Mrkev</div>
+          </div>
+          <div style="font-size:7.5px;color:#7a6050;font-style:italic;margin-bottom:8px;">Žádná z příchutí neobsahuje alergeny 1–6 a 8–14.</div>
+          <hr style="border:none;border-top:1px solid rgba(107,48,18,.2);margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;">
+            <div style="font-size:7px;color:#6B3012;line-height:1.7;">PROVOZOVATEL: Libeřské lahůdky a.s.<br>Na Spojce 670, 252 50 Vestec<br>IČO: 06679480 &nbsp; DIČ: CZ06679480</div>
+            <div id="zmrz-vedouci-display" style="font-size:7px;color:#6B3012;line-height:1.7;text-align:right;font-weight:600;">ODPOVĚDNÝ VEDOUCÍ:<br>—<br>Tel.: —</div>
+          </div>
+          <div style="display:flex;justify-content:center;margin-bottom:4px;">
+            <img id="zmrz-ikony" src="" style="height:40px;object-fit:contain;">
+          </div>
+          <div style="font-size:6px;color:#9a7a6a;text-align:center;line-height:1.4;margin-bottom:4px;">Podle zákona o evidenci tržeb je prodávající povinen vystavit kupujícímu účtenku. Zároveň je povinen zaevidovat přijatou tržbu u správce daně online; v případě technického výpadku pak nejpozději do 48 hodin.</div>
+          <div style="display:flex;justify-content:center;gap:8px;font-size:6px;color:#6B3012;font-weight:600;border-top:1px solid rgba(107,48,18,.15);padding-top:4px;">
             <span>⊕ WWW.LIBERSKELAHUDKY.CZ</span><span>⊕ WWW.LAHUDKY.CZ</span><span>ⓕ LAHUDKY.CZ</span><span>⊕ LIBERSKELAHUDKY</span>
           </div>
         </div>
@@ -1079,6 +1153,22 @@ body {
 
 
   <!-- LOG VIEW -->
+
+  <!-- STÁTNÍ SVÁTKY — hromadný přehled -->
+  <div id="view-svatky" class="wolt-view" style="display:none;">
+    <div class="view-head" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+      <div>
+        <div class="view-title">📅 Státní svátky 2026</div>
+        <div class="view-sub">Přehled speciálních hodin všech prodejen</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="font-size:12px;color:var(--text2);">Svátek:</label>
+        <select id="sv-global-sel" onchange="renderSvatkyView()" style="padding:7px 10px;font-size:13px;font-family:var(--font);border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;"></select>
+        <button class="btn" onclick="copySvatkyAll()">Kopírovat přehled</button>
+      </div>
+    </div>
+    <div id="sv-global-table"></div>
+  </div>
 
 </div><!-- /main-area -->
 </div><!-- /body -->
@@ -1191,28 +1281,28 @@ function emptyStore(id, name, type) {
 
 // ─── INITIAL DATA ────────────────────────────────────────────────
 var DEFAULT_STORES = [
-  {id:'1',name:'1. Florenc – Na Poříčí',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-832.png',type:'Ulice',addr:'Biskupská 1065/1, 110 00 Nové Město',tel:'+420 734 233 715',email:'porici@liberskelahudky.cz',vedouci:'Věra Málková',vedouciTel:'+420 734 233 715',obchZast:'David Fendrych',wolt:'Ano',gmaps:'Libeřské lahůdky Florenc',drive:'https://drive.google.com/drive/folders/1f6Nvorvfs6rwaDmr8c9sKFiHN5OvxpfC',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:3,lcd:3,dvere:0,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'',saints:{},changelog:[]},
-  {id:'2',name:'2. Vodičkova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-826.png',type:'Ulice',addr:'Vodičkova 730/9, 110 00 Nové Město',tel:'+420 733 766 054',email:'vodickova@liberskelahudky.cz',vedouci:'Marie Navrátilová',vedouciTel:'+420 733 766 054',obchZast:'David Fendrych',wolt:'Ano',gmaps:'Libeřské lahůdky Vodičkova',drive:'https://drive.google.com/drive/folders/1-Pg-bj-uTTyg0xM3jZdc06-SfU5cICSY',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','ZAVŘENO'],zmrzlina:3,nfc:2,lcd:4,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-18:00, So 10:00-17:00',notes:'',saints:{},changelog:[]},
-  {id:'3',name:'3. Háje',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-818.png',type:'Ulice',addr:'Arkalycká 758/2, 149 00 Praha 4',tel:'+420 703 636 919',email:'haje@liberskelahudky.cz',vedouci:'Lucie Murtingerová',vedouciTel:'+420 703 636 919',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/19H_cUpZex3WAmhTjttgbbaCpikHNas34',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-14:00','ZAVŘENO'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00',notes:'',saints:{},changelog:[]},
-  {id:'4',name:'4. Arkády Pankrác',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-831.png',type:'Obchodní centrum',addr:'Na Pankráci 1727/86, 140 00 Praha 4-Nusle',tel:'+420 703 635 653',email:'arkady@liberskelahudky.cz',vedouci:'Veronika Hromková',vedouciTel:'+420 703 635 653',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1SCRPYh3a4U0Oq82KhOHPaQD_jIaCcmyF',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-21:00','7:00-21:00','7:00-21:00','7:00-21:00','7:00-21:00','9:00-21:00','9:00-21:00'],zmrzlina:0,nfc:2,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
-  {id:'5',name:'5. Poliklinika Modřany',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-833.png',type:'Poliklinika',addr:'Soukalova 3355/3, 143 00 Praha 12-Modřany',tel:'+420 731 344 934',email:'modrany@liberskelahudky.cz',vedouci:'Monika Mihalova',vedouciTel:'+420 731 344 934',obchZast:'Richard Sviták',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1wzAn9_Ds8Ls0dymWYhxIF6-kpgHiT6Mh',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['7:00-17:00','7:00-17:00','7:00-17:00','7:00-17:00','7:00-14:00','ZAVŘENO','ZAVŘENO'],zmrzlina:0,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
-  {id:'6',name:'6. DBK Olbrachtova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-827.png',type:'Obchodní centrum',addr:'Olbrachtova 1946/64, 140 00 Praha 4-Krč',tel:'+420 703 635 637',email:'dbk@liberskelahudky.cz',vedouci:'Erzsébet Rápova',vedouciTel:'+420 774 293 018',obchZast:'Richard Sviták',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1ihnJzpIQFvdmQdZbPn97cdvfUjch9ist',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-14:00','ZAVŘENO'],zmrzlina:5,nfc:1,lcd:2,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'',notes:'',saints:{},changelog:[]},
-  {id:'7',name:'7. Poliklinika Budějovická',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-806.png',type:'Poliklinika',addr:'A. Staška 1670/80, 140 00 Praha 4',tel:'+420 734 233 712',email:'budejovicka@liberskelahudky.cz',vedouci:'Farzanh Yazdaniová',vedouciTel:'+420 734 233 712',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1YB9efqdIFz5s4eV8iFRGD7uW9T04QuD_',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'Bezbariérový přístup',barrier:true,seating:true,eshop:false,kiosek:false,vyroba:true,hours:['6:30-18:00','6:30-18:00','6:30-18:00','6:30-18:00','6:30-17:00','ZAVŘENO','ZAVŘENO'],zmrzlina:3,nfc:2,lcd:3,dvere:0,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
-  {id:'8',name:'8. Krč – Thomayerova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-819.png',type:'Poliklinika',addr:'Vídeňská 800, 140 00 Praha 4-Krč',tel:'+420 734 233 714',email:'krc@liberskelahudky.cz',vedouci:'Radka Přibylová',vedouciTel:'+420 734 233 714',obchZast:'Richard Sviták',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1vJund0hCDQBv0vqiilGzdw-lmLnjGTkL',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:true,eshop:false,kiosek:false,vyroba:true,hours:['6:15-17:00','6:15-17:00','6:15-17:00','6:15-17:00','6:15-17:00','8:00-17:00','9:00-16:00'],zmrzlina:5,nfc:3,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-So 10:00-16:00, Ne 10:00-15:00',notes:'',saints:{},changelog:[]},
-  {id:'9',name:'9. Letná – Strossmayerovo nám.',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-830.png',type:'Ulice',addr:'Dukelských Hrdinů 691/33, 170 00 Praha 7',tel:'+420 739 047 959',email:'dukelskychhrdinu@liberskelahudky.cz',vedouci:'Irena Bažová',vedouciTel:'+420 739 047 959',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1vU61lJiy1QUbVRGcmUpeqD0HwixG3h4N',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'',saints:{},changelog:[]},
-  {id:'10',name:'10. Holešovice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-820.png',type:'Ulice',addr:'Komunardů 1126/31, 170 00 Praha 7',tel:'+420 605 549 235',email:'holesovice@liberskelahudky.cz',vedouci:'Miroslava Smuk',vedouciTel:'+420 605 549 235',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1gmd4Y7lE0SmoyVRdgdG8tZ6apApkCfQa',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:2,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 9:00-17:00',notes:'',saints:{},changelog:[]},
-  {id:'11',name:'11. Dejvice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-823.png',type:'Ulice',addr:'Kafkova 580/26, 160 00 Praha 6-Dejvice',tel:'+420 703 635 658',email:'dejvice@liberskelahudky.cz',vedouci:'Petr Šindelář',vedouciTel:'+420 703 635 658',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1z5qJrCcX96r-LY67lr_ofjCnlbWdbAU0',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:2,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'10:00-18:00',notes:'',saints:{},changelog:[]},
-  {id:'12',name:'12. Palmovka',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png',type:'Ulice',addr:'Na Žertvách 107/8, 180 00 Praha 8-Libeň',tel:'+420 731 151 317',email:'palmovka@liberskelahudky.cz',vedouci:'Gabriela Dvořáková',vedouciTel:'+420 731 151 317',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1Toqt0Pbmb4eccvXAx6yQ3fffW_fmJg0l',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'',saints:{},changelog:[]},
-  {id:'13',name:'13. Smíchov Ostrovského',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-828.png',type:'Ulice',addr:'Ostrovského 33/2, 150 00 Praha 5-Smíchov',tel:'+420 731 151 313',email:'ostrovskeho@liberskelahudky.cz',vedouci:'Olga Fritschová',vedouciTel:'+420 731 151 313',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1xdUSXtIVOccfHgMQA6_nSSFLQCCn6Yk4',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-17:00'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-17:00, So 10:00-17:00, Ne 10:00-16:00',notes:'',saints:{},changelog:[]},
-  {id:'14',name:'14. Palmovka Cukrárna',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png',type:'Ulice',addr:'Na Žertvách 107/8, 180 00 Praha 8-Libeň',tel:'+420 731 151 317',email:'palmovka@liberskelahudky.cz',vedouci:'Gabriela Dvořáková',vedouciTel:'+420 731 151 317',obchZast:'Richard Sviták',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1I2dwZblrJqxV-nYT4gRUvy6bBViwB35g',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','9:00-18:00','9:00-18:00'],zmrzlina:3,nfc:1,lcd:1,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'Do 31.5. zkušební provoz.',saints:{},changelog:[]},
-  {id:'15',name:'15. Ruzyně',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-829.png',type:'Ulice',addr:'Žukovského 887/4, 161 00 Praha 6',tel:'+420 703 635 650',email:'ruzyne@liberskelahudky.cz',vedouci:'Jakub Hermánek',vedouciTel:'+420 736 681 747',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1XQzfL9Af5U5WRPYi4Lfrh1Idr1BkeGTf',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:true,eshop:true,kiosek:false,vyroba:true,hours:['6:30-17:00','6:30-17:00','6:30-17:00','6:30-17:00','6:30-16:00','8:00-12:00','ZAVŘENO'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Stejná jako prodejna',notes:'',saints:{},changelog:[]},
-  {id:'16',name:'16. Poliklinika Vysočany',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-834.png',type:'Poliklinika',addr:'Sokolovská 810/304, 190 00 Praha 9-Vysočany',tel:'+420 604 271 071',email:'vysocany@liberskelahudky.cz',vedouci:'Jaroslava Krejčí',vedouciTel:'+420 604 271 071',obchZast:'Richard Sviták',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1mfvIjvhf9O3a4hYTyHKdrDqlSaNGY0gl',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['7:00-17:00','7:00-17:00','7:00-17:00','7:00-17:00','7:00-16:00','ZAVŘENO','ZAVŘENO'],zmrzlina:0,nfc:1,lcd:2,dvere:0,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
-  {id:'17',name:'17. Jesenice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-836.png',type:'Mimopražská',addr:'Na Ochoze 474, 252 42 Jesenice u Prahy',tel:'+420 731 151 311',email:'jesenice@liberskelahudky.cz',vedouci:'',vedouciTel:'',obchZast:'David Fendrych',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1CXfIgZdIqGeF0SedzyeChT6jwIpm2JV5',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['6:00-17:30','6:00-17:30','6:00-17:30','6:00-17:30','6:00-17:30','7:00-11:00','ZAVŘENO'],zmrzlina:0,nfc:1,lcd:1,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
-  {id:'18',name:'18. Libeř',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-825.png',type:'Mimopražská',addr:'Libeř 35, 252 41 Dolní Břežany',tel:'+420 739 642 680',email:'prodejnaliber@liberskelahudky.cz',vedouci:'',vedouciTel:'',obchZast:'David Fendrych',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1hZlSAbV14rLHfYW48Z6UztMkw-h0zIRO',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-12:00','ZAVŘENO'],zmrzlina:3,nfc:1,lcd:1,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
-  {id:'19',name:'19. České Budějovice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-821.png',type:'Mimopražská',addr:'',tel:'',email:'',vedouci:'Zdeňka Pavlíková',vedouciTel:'+420 603 755 230',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1Kk-XJ91ym_GP3rwOtSVBMMmrbtiwjRX4',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:true,kiosek:false,vyroba:true,hours:['7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','8:00-17:00','8:00-17:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-17:00, So-Ne 10:00-16:00',notes:'Chybí adresa — doplnit.',saints:{},changelog:[]},
-  {id:'20',name:'20. I.P. Pavlova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-835.png',type:'Obchodní centrum',addr:'',tel:'',email:'',vedouci:'Tetiana Kravets',vedouciTel:'+420 604 786 462',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1qYSqxg9OnADVYytcU6btigcWckdtkWPZ',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:true,vyroba:true,hours:['6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','8:00-19:00','8:00-19:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'10:00-18:00',notes:'Chybí adresa — doplnit.',saints:{},changelog:[]},
-  {id:'21',name:'21. OC Nový Smíchov',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-837.png',type:'Obchodní centrum',addr:'',tel:'',email:'',vedouci:'Irena Palinchak',vedouciTel:'+420 776 107 527',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',drive:'https://drive.google.com/drive/folders/1i0w46HLoPysGJBdvQ0MLaG4PEVZckdo4',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:true,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-19:00','8:00-19:00'],zmrzlina:0,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'Chybí hodiny a kontakt — doplnit.',saints:{},changelog:[]},
-  {id:'22',name:'22. Hlavní nádraží',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-824.png',type:'Dopravní uzel',addr:'Wilsonova 300/8, 110 00 Vinohrady',tel:'+420 731 259 525',email:'hlavak@liberskelahudky.cz',vedouci:'Ivona Skrbková',vedouciTel:'+420 731 259 525',obchZast:'David Fendrych',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1da6I0hrmYqYlZtgXzB_qvU2e_bqbZecp',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:true,vyroba:false,hours:['6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'6:00-23:00',notes:'Chybí otevírací doba — doplnit.',saints:{},changelog:[]}
+  {id:'1',name:'1. Florenc – Na Poříčí',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-832.png',type:'Ulice',addr:'Biskupská 1065/1, 110 00 Nové Město',tel:'+420 734 233 715',email:'porici@liberskelahudky.cz',vedouci:'Věra Málková',vedouciTel:'+420 734 233 715',obchZast:'David Fendrych',wolt:'Ano',gmaps:'https://g.page/Liberske-lahudky-na-porici?share',firmy:'https://www.firmy.cz/company/13362499-liberske-lahudky-praha-florenc.html',web:'https://www.liberskelahudky.cz/prodejna/florenc-na-porici/',drive:'https://drive.google.com/drive/folders/1f6Nvorvfs6rwaDmr8c9sKFiHN5OvxpfC',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:3,lcd:3,dvere:0,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'',saints:{},changelog:[]},
+  {id:'2',name:'2. Vodičkova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-826.png',type:'Ulice',addr:'Vodičkova 730/9, 110 00 Nové Město',tel:'+420 733 766 054',email:'vodickova@liberskelahudky.cz',vedouci:'Marie Navrátilová',vedouciTel:'+420 733 766 054',obchZast:'David Fendrych',wolt:'Ano',gmaps:'https://g.page/LiberskeLahudkyVodickova?share',firmy:'https://www.firmy.cz/company/13362500-liberske-lahudky-praha-nove-mesto.html',web:'https://www.liberskelahudky.cz/prodejna/vodickova/',drive:'https://drive.google.com/drive/folders/1-Pg-bj-uTTyg0xM3jZdc06-SfU5cICSY',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','ZAVŘENO'],zmrzlina:3,nfc:2,lcd:4,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-18:00, So 10:00-17:00',notes:'',saints:{},changelog:[]},
+  {id:'3',name:'3. Háje',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-818.png',type:'Ulice',addr:'Arkalycká 758/2, 149 00 Praha 4',tel:'+420 703 636 919',email:'haje@liberskelahudky.cz',vedouci:'Lucie Murtingerová',vedouciTel:'+420 703 636 919',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',firmy:'https://www.firmy.cz/company/13397290-liberske-lahudky-praha-haje.html',web:'https://www.liberskelahudky.cz/prodejna/haje/',drive:'https://drive.google.com/drive/folders/19H_cUpZex3WAmhTjttgbbaCpikHNas34',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-14:00','ZAVŘENO'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00',notes:'',saints:{},changelog:[]},
+  {id:'4',name:'4. Arkády Pankrác',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-831.png',type:'Obchodní centrum',addr:'Na Pankráci 1727/86, 140 00 Praha 4-Nusle',tel:'+420 703 635 653',email:'arkady@liberskelahudky.cz',vedouci:'Veronika Hromková',vedouciTel:'+420 703 635 653',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'https://g.page/liberske-lahudky-arkady?share',firmy:'https://www.firmy.cz/company/13472477-liberske-lahudky-praha-nusle.html',web:'https://www.liberskelahudky.cz/prodejna/arkady-pankrac/',drive:'https://drive.google.com/drive/folders/1SCRPYh3a4U0Oq82KhOHPaQD_jIaCcmyF',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-21:00','7:00-21:00','7:00-21:00','7:00-21:00','7:00-21:00','9:00-21:00','9:00-21:00'],zmrzlina:0,nfc:2,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
+  {id:'5',name:'5. Poliklinika Modřany',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-833.png',type:'Poliklinika',addr:'Soukalova 3355/3, 143 00 Praha 12-Modřany',tel:'+420 731 344 934',email:'modrany@liberskelahudky.cz',vedouci:'Monika Mihalova',vedouciTel:'+420 731 344 934',obchZast:'Richard Sviták',wolt:'',gmaps:'',firmy:'https://www.firmy.cz/company/13472485-liberske-lahudky-praha-modrany.html',web:'https://www.liberskelahudky.cz/prodejna/modrany/',drive:'https://drive.google.com/drive/folders/1wzAn9_Ds8Ls0dymWYhxIF6-kpgHiT6Mh',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['7:00-17:00','7:00-17:00','7:00-17:00','7:00-17:00','7:00-14:00','ZAVŘENO','ZAVŘENO'],zmrzlina:0,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
+  {id:'6',name:'6. DBK Olbrachtova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-827.png',type:'Obchodní centrum',addr:'Olbrachtova 1946/64, 140 00 Praha 4-Krč',tel:'+420 703 635 637',email:'dbk@liberskelahudky.cz',vedouci:'Erzsébet Rápova',vedouciTel:'+420 774 293 018',obchZast:'Richard Sviták',wolt:'',gmaps:'https://goo.gl/maps/bMQRtWEcLq1n3y6g9',firmy:'https://www.firmy.cz/company/13472484-liberske-lahudky-praha-olbrachtova.html',web:'https://www.liberskelahudky.cz/prodejna/dbk-olbrachtova/',drive:'https://drive.google.com/drive/folders/1ihnJzpIQFvdmQdZbPn97cdvfUjch9ist',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-14:00','ZAVŘENO'],zmrzlina:5,nfc:1,lcd:2,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00',notes:'',saints:{},changelog:[]},
+  {id:'7',name:'7. Poliklinika Budějovická',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-806.png',type:'Poliklinika',addr:'A. Staška 1670/80, 140 00 Praha 4',tel:'+420 734 233 712',email:'budejovicka@liberskelahudky.cz',vedouci:'Farzanh Yazdaniová',vedouciTel:'+420 734 233 712',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'https://g.page/LiberskeLahudkyKrc?share',firmy:'https://www.firmy.cz/company/13472483-liberske-lahudky-praha-krc.html',web:'https://www.liberskelahudky.cz/prodejna/budejovicka/',drive:'https://drive.google.com/drive/folders/1YB9efqdIFz5s4eV8iFRGD7uW9T04QuD_',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'Bezbariérový přístup',barrier:true,seating:true,eshop:false,kiosek:false,vyroba:true,hours:['6:30-18:00','6:30-18:00','6:30-18:00','6:30-18:00','6:30-17:00','ZAVŘENO','ZAVŘENO'],zmrzlina:3,nfc:2,lcd:3,dvere:0,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Čt 10:00-17:00, Pá 10:00-16:00',notes:'',saints:{},changelog:[]},
+  {id:'8',name:'8. Krč – Thomayerova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-819.png',type:'Poliklinika',addr:'Vídeňská 800, 140 00 Praha 4-Krč',tel:'+420 734 233 714',email:'krc@liberskelahudky.cz',vedouci:'Radka Přibylová',vedouciTel:'+420 734 233 714',obchZast:'Richard Sviták',wolt:'',gmaps:'https://g.page/LiberskeLahudkyKrc?share',firmy:'https://www.firmy.cz/company/13472483-liberske-lahudky-praha-krc.html',web:'https://www.liberskelahudky.cz/prodejna/krc-thomayerova/',drive:'https://drive.google.com/drive/folders/1vJund0hCDQBv0vqiilGzdw-lmLnjGTkL',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:true,eshop:false,kiosek:false,vyroba:true,hours:['6:15-17:00','6:15-17:00','6:15-17:00','6:15-17:00','6:15-17:00','8:00-17:00','9:00-16:00'],zmrzlina:5,nfc:3,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-So 10:00-16:00, Ne 10:00-15:00',notes:'',saints:{},changelog:[]},
+  {id:'9',name:'9. Letná – Strossmayerovo nám.',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-830.png',type:'Ulice',addr:'Dukelských Hrdinů 691/33, 170 00 Praha 7',tel:'+420 739 047 959',email:'dukelskychhrdinu@liberskelahudky.cz',vedouci:'Irena Bažová',vedouciTel:'+420 739 047 959',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',firmy:'https://www.firmy.cz/company/13539384-liberske-lahudky-praha-holesovice-2.html',web:'https://www.liberskelahudky.cz/prodejna/letna/',drive:'https://drive.google.com/drive/folders/1vU61lJiy1QUbVRGcmUpeqD0HwixG3h4N',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'',saints:{},changelog:[]},
+  {id:'10',name:'10. Holešovice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-820.png',type:'Ulice',addr:'Komunardů 1126/31, 170 00 Praha 7',tel:'+420 605 549 235',email:'holesovice@liberskelahudky.cz',vedouci:'Miroslava Smuk',vedouciTel:'+420 605 549 235',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',firmy:'https://www.firmy.cz/company/13539385-liberske-lahudky-praha-holesovice.html',web:'https://www.liberskelahudky.cz/prodejna/holesovice/',drive:'https://drive.google.com/drive/folders/1gmd4Y7lE0SmoyVRdgdG8tZ6apApkCfQa',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:2,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 9:00-17:00',notes:'',saints:{},changelog:[]},
+  {id:'11',name:'11. Dejvice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-823.png',type:'Ulice',addr:'Kafkova 580/26, 160 00 Praha 6-Dejvice',tel:'+420 703 635 658',email:'dejvice@liberskelahudky.cz',vedouci:'Petr Šindelář',vedouciTel:'+420 703 635 658',obchZast:'David Fendrych',wolt:'Ano',gmaps:'https://goo.gl/maps/scAnu36dig1nV26XA',firmy:'https://www.firmy.cz/company/13362503-liberske-lahudky-praha-dejvice.html',web:'https://www.liberskelahudky.cz/prodejna/dejvice/',drive:'https://drive.google.com/drive/folders/1z5qJrCcX96r-LY67lr_ofjCnlbWdbAU0',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:2,dvere:2,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'',saints:{},changelog:[]},
+  {id:'12',name:'12. Palmovka',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png',type:'Ulice',addr:'Na Žertvách 107/8, 180 00 Praha 8-Libeň',tel:'+420 731 151 317',email:'palmovka@liberskelahudky.cz',vedouci:'Gabriela Dvořáková',vedouciTel:'+420 731 151 317',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'',firmy:'https://www.firmy.cz/company/13362492-liberske-lahudky-praha-liben.html',web:'https://www.liberskelahudky.cz/prodejna/palmovka/',drive:'https://drive.google.com/drive/folders/1Toqt0Pbmb4eccvXAx6yQ3fffW_fmJg0l',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'',saints:{},changelog:[]},
+  {id:'13',name:'13. Smíchov Ostrovského',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-828.png',type:'Ulice',addr:'Ostrovského 33/2, 150 00 Praha 5-Smíchov',tel:'+420 731 151 313',email:'ostrovskeho@liberskelahudky.cz',vedouci:'Olga Fritschová',vedouciTel:'+420 731 151 313',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'https://g.page/LiberskeLahudkySmichov?share',firmy:'https://www.firmy.cz/company/13472488-liberske-lahudky-praha-smichov.html',web:'https://www.liberskelahudky.cz/prodejna/ostrovskeho/',drive:'https://drive.google.com/drive/folders/1xdUSXtIVOccfHgMQA6_nSSFLQCCn6Yk4',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:true,hours:['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-17:00'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Pá 10:00-18:00, So 10:00-17:00, Ne 10:00-16:00',notes:'',saints:{},changelog:[]},
+  {id:'14',name:'14. Palmovka Cukrárna',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png',type:'Ulice',addr:'Na Žertvách 107/8, 180 00 Praha 8-Libeň',tel:'+420 731 151 317',email:'palmovka@liberskelahudky.cz',vedouci:'Gabriela Dvořáková',vedouciTel:'+420 731 151 317',obchZast:'Richard Sviták',wolt:'',gmaps:'',drive:'https://drive.google.com/drive/folders/1I2dwZblrJqxV-nYT4gRUvy6bBViwB35g',web:'https://www.liberskelahudky.cz/prodejna/palmovka-cukrarna/',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','9:00-18:00','9:00-18:00'],zmrzlina:3,nfc:1,lcd:1,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-18:00, So-Ne 10:00-17:00',notes:'Do 31.5. zkušební provoz.',saints:{},changelog:[]},
+  {id:'15',name:'15. Ruzyně',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-829.png',type:'Ulice',addr:'Žukovského 887/4, 161 00 Praha 6',tel:'+420 703 635 650',email:'ruzyne@liberskelahudky.cz',vedouci:'Jakub Hermánek',vedouciTel:'+420 736 681 747',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',firmy:'https://www.firmy.cz/company/13472487-liberske-lahudky-praha-ruzyne.html',web:'https://www.liberskelahudky.cz/prodejna/ruzyne/',drive:'https://drive.google.com/drive/folders/1XQzfL9Af5U5WRPYi4Lfrh1Idr1BkeGTf',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:true,eshop:true,kiosek:false,vyroba:true,hours:['6:30-17:00','6:30-17:00','6:30-17:00','6:30-17:00','6:30-16:00','8:00-12:00','ZAVŘENO'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Čt 10:00-16:00, Pá 10:00-15:00, So 10:00-11:00',notes:'',saints:{},changelog:[]},
+  {id:'16',name:'16. Poliklinika Vysočany',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-834.png',type:'Poliklinika',addr:'Sokolovská 810/304, 190 00 Praha 9-Vysočany',tel:'+420 604 271 071',email:'vysocany@liberskelahudky.cz',vedouci:'Jaroslava Krejčí',vedouciTel:'+420 604 271 071',obchZast:'Richard Sviták',wolt:'',gmaps:'',firmy:'https://www.firmy.cz/company/13472486-liberske-lahudky-praha-vysocany.html',web:'https://www.liberskelahudky.cz/prodejna/vysocany/',drive:'https://drive.google.com/drive/folders/1mfvIjvhf9O3a4hYTyHKdrDqlSaNGY0gl',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['7:00-17:00','7:00-17:00','7:00-17:00','7:00-17:00','7:00-16:00','ZAVŘENO','ZAVŘENO'],zmrzlina:0,nfc:1,lcd:2,dvere:0,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
+  {id:'17',name:'17. Jesenice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-836.png',type:'Mimopražská',addr:'Na Ochoze 474, 252 42 Jesenice u Prahy',tel:'+420 731 151 311',email:'jesenice@liberskelahudky.cz',vedouci:'',vedouciTel:'',obchZast:'David Fendrych',wolt:'',gmaps:'',firmy:'https://www.firmy.cz/company/13362507-liberske-lahudky-jesenice.html',web:'https://www.liberskelahudky.cz/prodejna/jesenice/',drive:'https://drive.google.com/drive/folders/1CXfIgZdIqGeF0SedzyeChT6jwIpm2JV5',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['6:00-17:30','6:00-17:30','6:00-17:30','6:00-17:30','6:00-17:30','7:00-11:00','ZAVŘENO'],zmrzlina:0,nfc:1,lcd:1,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'',saints:{},changelog:[]},
+  {id:'18',name:'18. Libeř',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-825.png',type:'Mimopražská',addr:'Libeř 35, 252 41 Dolní Břežany',tel:'+420 739 642 680',email:'prodejnaliber@liberskelahudky.cz',vedouci:'',vedouciTel:'',obchZast:'David Fendrych',wolt:'',gmaps:'',firmy:'https://www.firmy.cz/company/13362506-liberske-lahudky-liber.html',web:'https://www.liberskelahudky.cz/prodejna/liber/',drive:'https://drive.google.com/drive/folders/1hZlSAbV14rLHfYW48Z6UztMkw-h0zIRO',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:false,kiosek:false,vyroba:false,hours:['7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-12:00','ZAVŘENO'],zmrzlina:3,nfc:1,lcd:1,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-17:00, So 10:00-11:00',notes:'',saints:{},changelog:[]},
+  {id:'19',name:'19. České Budějovice',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-821.png',type:'Mimopražská',addr:'',tel:'',email:'',vedouci:'Zdeňka Pavlíková',vedouciTel:'+420 603 755 230',obchZast:'David Fendrych',wolt:'Ano',gmaps:'',firmy:'https://www.firmy.cz/company/13748209-liberske-lahudky-ceske-budejovice-1.html',web:'https://www.liberskelahudky.cz/prodejna/ceske-budejovice/',drive:'https://drive.google.com/drive/folders/1Kk-XJ91ym_GP3rwOtSVBMMmrbtiwjRX4',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:true,kiosek:false,vyroba:true,hours:['7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','8:00-17:00','8:00-17:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Pá 10:00-17:00, So-Ne 10:00-14:00',notes:'Chybí adresa — doplnit.',saints:{},changelog:[]},
+  {id:'20',name:'20. I.P. Pavlova',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-835.png',type:'Obchodní centrum',addr:'',tel:'',email:'',vedouci:'Tetiana Kravets',vedouciTel:'+420 604 786 462',obchZast:'David Fendrych',wolt:'Ano',gmaps:'https://maps.app.goo.gl/2TL6p9ZEBH8gizD6A',firmy:'https://www.firmy.cz/company/13791731-liberske-lahudky-praha-vinohrady.html',web:'https://www.liberskelahudky.cz/prodejna/i-p-pavlova/',drive:'https://drive.google.com/drive/folders/1qYSqxg9OnADVYytcU6btigcWckdtkWPZ',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:true,vyroba:true,hours:['6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','8:00-19:00','8:00-19:00'],zmrzlina:3,nfc:1,lcd:3,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:true,zmrzHours:'Po-Ne 10:00-18:00',notes:'Chybí adresa — doplnit.',saints:{},changelog:[]},
+  {id:'21',name:'21. OC Nový Smíchov',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-837.png',type:'Obchodní centrum',addr:'',tel:'',email:'',vedouci:'Irena Palinchak',vedouciTel:'+420 776 107 527',obchZast:'Richard Sviták',wolt:'Ano',gmaps:'https://maps.app.goo.gl/9cVgsccUyPj7Dbxx7',drive:'https://drive.google.com/drive/folders/1i0w46HLoPysGJBdvQ0MLaG4PEVZckdo4',web:'https://www.liberskelahudky.cz/prodejna/novy-smichov/',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:false,seating:false,eshop:true,kiosek:false,vyroba:true,hours:['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-19:00','8:00-19:00'],zmrzlina:0,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'',notes:'Chybí hodiny a kontakt — doplnit.',saints:{},changelog:[]},
+  {id:'22',name:'22. Hlavní nádraží',photo:'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-824.png',type:'Dopravní uzel',addr:'Wilsonova 300/8, 110 00 Vinohrady',tel:'+420 731 259 525',email:'hlavak@liberskelahudky.cz',vedouci:'Ivona Skrbková',vedouciTel:'+420 731 259 525',obchZast:'David Fendrych',wolt:'',gmaps:'https://maps.app.goo.gl/uc2EkY8VF64ZWi73A',firmy:'https://www.firmy.cz/company/13362498-liberske-lahudky-hlavni-nadrazi.html',web:'https://www.liberskelahudky.cz/prodejna/hlavni-nadrazi/',drive:'https://drive.google.com/drive/folders/1da6I0hrmYqYlZtgXzB_qvU2e_bqbZecp',landlord:'',landlordTel:'',leaseEnd:'',area:'',mhd:'',parking:'',barrier:true,seating:false,eshop:false,kiosek:true,vyroba:false,hours:['6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00'],zmrzlina:3,nfc:1,lcd:2,dvere:1,kavovar:'',lednice:0,vahy:0,pos:'',okenko:false,zmrzHours:'Po-Ne 10:00-22:00',notes:'Chybí otevírací doba — doplnit.',saints:{},changelog:[]}
 ];
 
 // ─── STATE ───────────────────────────────────────────────────────
@@ -1236,10 +1326,16 @@ function loadData() {
       stores = JSON.parse(raw);
       stores.forEach(function(s){
         if(!s.exceptions) s.exceptions={};
-        // Doplnit photo z DEFAULT_STORES pokud chybí (starší localStorage)
-        if(!s.photo) {
-          var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
-          if(def && def.photo) s.photo = def.photo;
+        var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
+        if(def) {
+          // Doplnit chybějící pole z DEFAULT_STORES (starší localStorage)
+          if(!s.photo)    s.photo    = def.photo    || '';
+          if(!s.gmaps)    s.gmaps    = def.gmaps    || '';
+          if(!s.firmy)    s.firmy    = def.firmy    || '';
+          if(!s.web)      s.web      = def.web      || '';
+          if(!s.zmrzHours) s.zmrzHours = def.zmrzHours || '';
+          // Přepsat hodiny vždy z DEFAULT_STORES (aktualizace z Excelu)
+          if(def.hours)   s.hours    = def.hours;
         }
       });
     } else {
@@ -1275,9 +1371,14 @@ function loadFromSheets() {
       stores = data.stores;
       stores.forEach(function(s){
         if(!s.exceptions) s.exceptions={};
-        if(!s.photo) {
-          var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
-          if(def && def.photo) s.photo = def.photo;
+        var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
+        if(def) {
+          if(!s.photo)     s.photo     = def.photo     || '';
+          if(!s.gmaps)     s.gmaps     = def.gmaps     || '';
+          if(!s.firmy)     s.firmy     = def.firmy     || '';
+          if(!s.web)       s.web       = def.web       || '';
+          if(!s.zmrzHours) s.zmrzHours = def.zmrzHours || '';
+          if(def.hours)    s.hours     = def.hours;
         }
       });
       localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
@@ -1433,7 +1534,7 @@ setInterval(updateClock, 1000);
 function showView(v) {
   currentView = v;
   document.querySelectorAll('.nav-tab').forEach(function(b){ b.classList.remove('active'); });
-  var idx = {live:0,wolt:1,tvradia:2,store:3,plakat:4,zmrzlina:5}[v];
+  var idx = {live:0,wolt:1,tvradia:2,store:3,plakat:4,zmrzlina:5,svatky:6}[v];
   if (idx !== undefined) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   document.getElementById('view-live').style.display = v==='live' ? 'block' : 'none';
   document.getElementById('view-wolt').style.display = v==='wolt' ? 'block' : 'none';
@@ -1441,11 +1542,13 @@ function showView(v) {
   document.getElementById('view-store').style.display = v==='store' ? 'block' : 'none';
   document.getElementById('view-plakat').style.display = v==='plakat' ? 'block' : 'none';
   document.getElementById('view-zmrzlina').style.display = v==='zmrzlina' ? 'block' : 'none';
+  document.getElementById('view-svatky').style.display = v==='svatky' ? 'block' : 'none';
   if (v==='live') renderLiveGrid();
   if (v==='wolt') renderWoltGrid();
   if (v==='tvradia') renderBulkTVRadio();
   if (v==='plakat') initPlakat();
   if (v==='zmrzlina') renderZmrzlinaView();
+  if (v==='svatky') initSvatkyView();
 }
 
 var bulkDay = (new Date().getDay()+6)%7;
@@ -1611,7 +1714,7 @@ function renderSidebar() {
     chips += '<span class="chip chip-type">'+s.type+'</span>';
     if (s.zmrzlina>0) chips += '<span class="chip chip-zmrz">🍦</span>';
     if (miss) chips += '<span class="chip chip-miss">!</span>';
-    return '<div class="store-item'+(idx===currentStoreIdx?' active':'')+'" onclick="openStoreByIdx('+idx+',false)">'+
+    return '<div class="store-item'+(idx===currentStoreIdx?' active':'')+'" onclick="openStoreByIdx('+idx+',true)">'+
       '<div class="si-row1">'+
         '<div class="si-status '+st.status+'"></div>'+
         '<div class="si-num">Prodejna '+s.id+'</div>'+
@@ -1669,7 +1772,12 @@ function fillStoreDetail(s) {
   setV('f-addr', s.addr); setV('f-tel', s.tel); setV('f-email', s.email);
   setV('f-vedouci', s.vedouci||''); setV('f-vedouci-tel', s.vedouciTel||'');
   setV('f-wolt', s.wolt||''); setV('f-gmaps', s.gmaps||''); setV('f-drive', s.drive||'');
+  setV('f-firmy', s.firmy||''); setV('f-web', s.web||'');
   updateGmapsLink();
+  var firmyLink = document.getElementById('f-firmy-link');
+  if (firmyLink) { var fv=s.firmy||''; firmyLink.href=fv||'#'; firmyLink.style.display=fv?'':'none'; }
+  var webLink = document.getElementById('f-web-link');
+  if (webLink) { var wv=s.web||''; webLink.href=wv||'#'; webLink.style.display=wv?'':'none'; }
   setV('f-landlord', s.landlord||''); setV('f-landlord-tel', s.landlordTel||'');
   setV('f-lease-end', s.leaseEnd||''); setV('f-area', s.area||'');
   setV('f-mhd', s.mhd||''); setV('f-parking', s.parking||'');
@@ -1681,6 +1789,9 @@ function fillStoreDetail(s) {
   setV('f-kavovar', s.kavovar||''); setV('f-lednice', s.lednice||0);
   setV('f-vahy', s.vahy||0); setV('f-pos', s.pos||'');
   setC('f-okenko', !!s.okenko); setV('f-zmrz-hours', s.zmrzHours||'');
+  setC('f-zmrz-vydej', !!s.zmrzVydej);
+  setV('f-zmrz-foto', s.zmrzFoto||''); setV('f-zmrz-note', s.zmrzNote||'');
+  previewZmrzFoto();
   // Poznámky
   setV('f-notes', s.notes||'');
 
@@ -1713,6 +1824,18 @@ function onFieldChange() {
   document.getElementById('dt-addr').textContent = getV('f-addr') || 'Adresa není zadána';
 }
 
+function previewZmrzFoto() {
+  var url = (document.getElementById('f-zmrz-foto')||{}).value||'';
+  var wrap = document.getElementById('zmrz-foto-preview');
+  var img  = document.getElementById('zmrz-foto-img');
+  if (!wrap || !img) return;
+  if (url && url.startsWith('http')) {
+    img.src = url; wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
 function updateGmapsLink() {
   var v = (document.getElementById('f-gmaps')||{}).value || '';
   v = v.trim();
@@ -1729,6 +1852,15 @@ function updateGmapsLink() {
   }
 }
 
+function updateFirmyLink() {
+  var v = (document.getElementById('f-firmy')||{}).value||'';
+  v = v.trim();
+  var link = document.getElementById('f-firmy-link');
+  if (!link) return;
+  link.href = v||'#';
+  link.style.display = v ? '' : 'none';
+}
+
 function saveCurrentStore() {
   if (currentStoreIdx < 0) return;
   var s = stores[currentStoreIdx];
@@ -1739,6 +1871,7 @@ function saveCurrentStore() {
   s.addr = getV('f-addr'); s.tel = getV('f-tel'); s.email = getV('f-email');
   s.vedouci = getV('f-vedouci'); s.vedouciTel = getV('f-vedouci-tel');
   s.wolt = getV('f-wolt'); s.gmaps = getV('f-gmaps'); s.drive = getV('f-drive');
+  s.firmy = getV('f-firmy'); s.web = getV('f-web');
   s.landlord = getV('f-landlord'); s.landlordTel = getV('f-landlord-tel');
   s.leaseEnd = getV('f-lease-end'); s.area = getV('f-area');
   s.mhd = getV('f-mhd'); s.parking = getV('f-parking');
@@ -1749,6 +1882,8 @@ function saveCurrentStore() {
   s.kavovar = getV('f-kavovar'); s.lednice = parseInt(getV('f-lednice'))||0;
   s.vahy = parseInt(getV('f-vahy'))||0; s.pos = getV('f-pos');
   s.okenko = getC('f-okenko'); s.zmrzHours = getV('f-zmrz-hours');
+  s.zmrzVydej = getC('f-zmrz-vydej');
+  s.zmrzFoto = getV('f-zmrz-foto'); s.zmrzNote = getV('f-zmrz-note');
   s.notes = getV('f-notes');
 
   // Hours from editor
@@ -1799,12 +1934,14 @@ function buildHoursEditor(s) {
     }
     var row = document.createElement('div');
     row.className='he-grid';
-    row.style.cssText='padding:4px 0;border-bottom:1px solid var(--border);';
+    row.style.cssText='padding:5px 0;border-bottom:1px solid var(--border);';
     row.innerHTML=
       '<div class="he-day">'+d+'</div>'+
-      '<input class="he-input" type="time" id="hef-'+i+'" value="'+from+'" '+(isCl?'disabled':'')+' onchange="onHoursChange()" />'+
-      '<input class="he-input" type="time" id="het-'+i+'" value="'+to+'" '+(isCl?'disabled':'')+' onchange="onHoursChange()" />'+
-      '<button class="he-zav'+(isCl?' on':'')+'" id="hecl-'+i+'" onclick="toggleHe('+i+')">zavřeno</button>';
+      '<input class="he-input" type="text" id="hef-'+i+'" value="'+from+'" placeholder="06:30" '+(isCl?'disabled':'')+' oninput="onHoursChange()" onblur="normalizeHeInput(this)" />'+
+      '<div class="he-sep">–</div>'+
+      '<input class="he-input" type="text" id="het-'+i+'" value="'+to+'" placeholder="19:00" '+(isCl?'disabled':'')+' oninput="onHoursChange()" onblur="normalizeHeInput(this)" />'+
+      '<button class="he-zav'+(isCl?' on':'')+'" id="hecl-'+i+'" onclick="toggleHe('+i+')">zavřeno</button>'+
+      '<button title="Kopírovat dolů" onclick="heCopyDown('+i+')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--text3);font-size:14px;border-radius:var(--r);transition:all .12s;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.background=\'var(--surface2)\';this.style.color=\'var(--brand)\'" onmouseout="this.style.background=\'none\';this.style.color=\'var(--text3)\'">↓</button>';
     wrap.appendChild(row);
   });
 }
@@ -1812,9 +1949,80 @@ function buildHoursEditor(s) {
 function toTV(s){
   if(!s) return '';
   s=String(s).replace(',','.');
-  if(s.indexOf(':')>-1){var p=s.split(':');return p[0].padStart(2,'0')+':'+p[1].padEnd(2,'0');}
-  if(s.indexOf('.')>-1){var p=s.split('.');return p[0].padStart(2,'0')+':'+p[1].padEnd(2,'0');}
+  if(s.indexOf(':')>-1){var p=s.split(':');return p[0].padStart(2,'0')+':'+p[1].padEnd(2,'0').slice(0,2);}
+  if(s.indexOf('.')>-1){var p=s.split('.');return p[0].padStart(2,'0')+':'+p[1].padEnd(2,'0').slice(0,2);}
   return s.padStart(2,'0')+':00';
+}
+
+function normalizeHeInput(el) {
+  var v = el.value.trim();
+  if (!v) return;
+  // Přijme: 630, 6:30, 06:30, 6.30
+  v = v.replace('.', ':').replace(',', ':');
+  if (v.indexOf(':') === -1) {
+    if (v.length <= 2) v = v + ':00';
+    else v = v.slice(0,-2) + ':' + v.slice(-2);
+  }
+  var parts = v.split(':');
+  el.value = parts[0].padStart(2,'0') + ':' + (parts[1]||'00').padEnd(2,'0').slice(0,2);
+  onHoursChange();
+}
+
+function heCopyDown(fromIdx) {
+  var fEl = document.getElementById('hef-'+fromIdx);
+  var tEl = document.getElementById('het-'+fromIdx);
+  var clEl = document.getElementById('hecl-'+fromIdx);
+  if (!fEl) return;
+  var isCl = clEl && clEl.classList.contains('on');
+  for (var i = fromIdx + 1; i < 7; i++) {
+    var f2 = document.getElementById('hef-'+i);
+    var t2 = document.getElementById('het-'+i);
+    var cl2 = document.getElementById('hecl-'+i);
+    if (!f2) continue;
+    if (isCl) {
+      if (!cl2.classList.contains('on')) toggleHe(i);
+    } else {
+      if (cl2.classList.contains('on')) toggleHe(i);
+      f2.value = fEl.value; t2.value = tEl.value;
+    }
+  }
+  onHoursChange();
+  var btn = event.target;
+  btn.textContent = '✓'; btn.style.color = 'var(--open)';
+  setTimeout(function(){ btn.textContent = '↓'; btn.style.color = 'var(--text3)'; }, 800);
+}
+
+function heCopyRange(fromIdx, toIdx) {
+  var srcF = '', srcT = '', srcCl = false;
+  for (var i = fromIdx; i <= toIdx; i++) {
+    var fEl = document.getElementById('hef-'+i);
+    var cl  = document.getElementById('hecl-'+i);
+    if (!fEl) continue;
+    if (cl && cl.classList.contains('on')) { srcCl = true; break; }
+    if (fEl.value) { srcF = fEl.value; srcT = (document.getElementById('het-'+i)||{}).value||''; break; }
+  }
+  if (!srcF && !srcCl) return;
+  for (var j = fromIdx; j <= toIdx; j++) {
+    var f2 = document.getElementById('hef-'+j);
+    var t2 = document.getElementById('het-'+j);
+    var cl2 = document.getElementById('hecl-'+j);
+    if (!f2) continue;
+    if (srcCl) {
+      if (!cl2.classList.contains('on')) toggleHe(j);
+    } else {
+      if (cl2 && cl2.classList.contains('on')) toggleHe(j);
+      f2.value = srcF; t2.value = srcT;
+    }
+  }
+  onHoursChange();
+}
+
+function heCloseRange(fromIdx, toIdx) {
+  for (var i = fromIdx; i <= toIdx; i++) {
+    var cl = document.getElementById('hecl-'+i);
+    if (cl && !cl.classList.contains('on')) toggleHe(i);
+  }
+  onHoursChange();
 }
 
 function toggleHe(i) {
@@ -1869,6 +2077,19 @@ function renderHoursDisplay(s) {
 
 // ─── SVÁTKY TAB ──────────────────────────────────────────────────
 function renderSvatkyTable(s) {
+  // Referenční hodiny
+  var h = s.hours || [];
+  var fmt = function(raw){ return (!raw||raw==='ZAVŘENO') ? 'zavřeno' : raw; };
+  var wday = fmt(h[0]); // Po = index 0, většina má Po-Pá stejné
+  var sat  = fmt(h[5]);
+  var sun  = fmt(h[6]);
+  var refEl = document.getElementById('sv-ref-hours');
+  if(refEl) {
+    document.getElementById('sv-ref-wday').textContent = 'Po–Pá: ' + wday;
+    document.getElementById('sv-ref-sat').textContent  = 'So: ' + sat;
+    document.getElementById('sv-ref-sun').textContent  = 'Ne: ' + sun;
+    refEl.style.display = 'flex';
+  }
   var saints = s.saints || {};
   var tbody = document.getElementById('sv-tbody');
   tbody.innerHTML = SAINTS.map(function(sv,i){
@@ -2374,6 +2595,24 @@ function selectZmrzStore(storeIdx) {
   document.getElementById('zmrz-editor').style.display = 'block';
   document.getElementById('zmrz-poster-wrap').style.display = 'block';
   document.getElementById('zmrz-print-btn').style.display = 'inline-flex';
+  updateZmrzFilename();
+
+  // Vykresli běžnou OD
+  var DAYS_S = ['Po','Út','St','Čt','Pá','So','Ne'];
+  var beznaGrid = document.getElementById('zmrz-bezna-grid');
+  if (beznaGrid) {
+    beznaGrid.innerHTML = DAYS_S.map(function(d, i) {
+      var h = (s.hours && s.hours[i]) || '';
+      var closed = !h || h.toUpperCase() === 'ZAVŘENO';
+      return '<div style="text-align:center;">'+
+        '<div style="font-size:9px;font-weight:700;color:var(--text3);margin-bottom:2px;">'+d+'</div>'+
+        (closed
+          ? '<div style="font-size:9px;color:var(--text3);font-style:italic;">—</div>'
+          : '<div style="font-size:9px;color:var(--text);line-height:1.3;">'+h.replace('-','<br>')+'</div>'
+        )+
+      '</div>';
+    }).join('');
+  }
 
   // Naplň editor
   document.getElementById('zv-vedouci').value = s.vedouci||'';
@@ -2472,66 +2711,81 @@ function printZmrzlinaPlakat() {
   var win = window.open('','_blank');
   var logoSrc = (document.querySelector('img[src^="data:image/svg"]')||{}).src||'';
   var ikonySrc = (document.querySelector('img[src^="data:image/png"]')||{}).src||'';
-  var css = [
+
+  var css=[
     '*{box-sizing:border-box;margin:0;padding:0;}',
     'html,body{width:210mm;height:297mm;background:white;}',
-    '.poster{width:210mm;height:297mm;background:white;padding:10mm 18mm 8mm;display:flex;flex-direction:column;overflow:hidden;}',
-    '.p-logo{text-align:center;margin-bottom:5mm;}',
-    '.p-logo img{height:14mm;object-fit:contain;}',
-    '.p-heading{font-family:"Bebas Neue",sans-serif;font-size:28mm;color:#6B3012;line-height:.88;text-align:center;margin-bottom:2mm;letter-spacing:0;}',
-    '.p-sub{font-family:"Bebas Neue",sans-serif;font-size:12mm;color:#6B3012;letter-spacing:0;text-align:center;margin-bottom:5mm;}',
-    '.p-hours{display:flex;flex-direction:column;margin-bottom:4mm;}',
-    '.p-row{display:flex;justify-content:space-between;align-items:baseline;line-height:1.2;}',
-    '.p-day{font-family:"Bebas Neue",sans-serif;font-size:13.5mm;color:#6B3012;letter-spacing:0;}',
-    '.p-time{font-family:"Bebas Neue",sans-serif;font-size:13.5mm;color:#6B3012;letter-spacing:0;white-space:nowrap;}',
-    '.p-time.zav{font-size:10mm;color:#a0786a;}',
-    '.p-divider{border:none;border-top:0.5mm solid #6B3012;opacity:.5;margin:3mm 0;}',
-    '.p-footer{display:flex;justify-content:space-between;gap:8mm;margin-bottom:3mm;}',
-    '.p-footer-l,.p-footer-r{font-family:"Open Sans",sans-serif;font-size:2.4mm;color:#6B3012;line-height:1.6;}',
+    '.poster{width:210mm;height:297mm;background:white;padding:8mm 16mm 6mm;display:flex;flex-direction:column;}',
+    '.p-logo{text-align:center;margin-bottom:3mm;}',
+    '.p-logo img{height:12mm;object-fit:contain;}',
+    '.p-heading{font-family:"Bebas Neue",sans-serif;font-size:24mm;color:#6B3012;line-height:.9;text-align:center;margin-bottom:0mm;}',
+    '.p-sub{font-family:"Bebas Neue",sans-serif;font-size:12mm;color:#6B3012;text-align:center;margin-bottom:4mm;}',
+    '.p-hours{display:flex;flex-direction:column;gap:0mm;margin-bottom:4mm;}',
+    '.p-row{display:flex;justify-content:space-between;align-items:baseline;}',
+    '.p-day{font-family:"Bebas Neue",sans-serif;font-size:16mm;color:#6B3012;}',
+    '.p-time{font-family:"Bebas Neue",sans-serif;font-size:16mm;color:#6B3012;white-space:nowrap;}',
+    '.p-time.zav{font-size:11mm;color:#a0786a;}',
+    '.p-sub2{font-family:"Bebas Neue",sans-serif;font-size:12mm;color:#6B3012;letter-spacing:.04em;display:flex;align-items:center;gap:3mm;margin-bottom:3mm;}',
+    '.p-sub2::before,.p-sub2::after{content:"";flex:1;border-top:0.45mm solid #6B3012;opacity:.4;}',
+    '.p-divider{border:none;border-top:0.35mm solid #d0c0b0;margin:2.5mm 0;}',
+    '.alrg{margin-bottom:1.5mm;}',
+    '.alrg-title{font-family:"Open Sans",sans-serif;font-size:3.2mm;font-weight:700;color:#6B3012;margin-bottom:.8mm;}',
+    '.alrg-body{font-family:"Open Sans",sans-serif;font-size:2.9mm;color:#3a2010;line-height:1.5;padding-left:0mm;}',
+    '.alrg-note{font-family:"Open Sans",sans-serif;font-size:2.5mm;color:#7a6050;font-style:italic;margin-top:2mm;}',
+    '.p-footer{display:flex;justify-content:space-between;gap:6mm;margin-top:auto;padding-top:3mm;border-top:0.35mm solid rgba(107,48,18,.25);margin-bottom:1.5mm;}',
+    '.p-footer-l,.p-footer-r{font-family:"Open Sans",sans-serif;font-size:2mm;color:#6B3012;line-height:1.5;}',
     '.p-footer-r{text-align:right;font-weight:700;}',
-    '.p-icons{display:flex;justify-content:center;margin-bottom:2mm;}',
-    '.p-icons img{height:14mm;object-fit:contain;}',
-    '.p-legal{font-family:"Open Sans",sans-serif;font-size:2mm;color:#8a6a5a;text-align:center;line-height:1.5;margin-bottom:3mm;}',
-    '.p-sites{display:flex;justify-content:center;gap:4mm;font-family:"Open Sans",sans-serif;font-size:2mm;color:#6B3012;font-weight:600;border-top:0.3mm solid rgba(107,48,18,.25);padding-top:2mm;}',
-    '@media print{@page{size:A4 portrait;margin:0;}html,body{width:210mm;min-height:297mm;}}'
+    '.p-icons{display:flex;justify-content:center;margin-bottom:1mm;}',
+    '.p-icons img{height:10mm;object-fit:contain;}',
+    '.p-legal{font-family:"Open Sans",sans-serif;font-size:1.7mm;color:#9a7a6a;text-align:center;line-height:1.4;margin-bottom:1.5mm;}',
+    '.p-sites{display:flex;justify-content:center;gap:3mm;font-family:"Open Sans",sans-serif;font-size:1.7mm;color:#6B3012;font-weight:600;}',
+    '@media print{@page{size:A4 portrait;margin:0;}html,body{width:210mm;height:297mm;}}'
   ].join('');
-  var rows = (function(){
+
+  var rows=(function(){
     if(_zmrzStoreIdx<0) return '';
-    var DAYS_U=['PONDěLÍ','ÚTERÝ','STŘEDA','ČTVRTEK','PÁTEK','SOBOTA','NEDĚLE'];
-    return DAYS_U.map(function(d,i){
+    var DU=['PONDěLÍ','ÚTERÝ','STŘEDA','ČTVRTEK','PÁTEK','SOBOTA','NEDĚLE'];
+    return DU.map(function(d,i){
       if(_zmrzClosed[i]) return '<div class="p-row"><div class="p-day">'+d+'</div><div class="p-time zav">ZAVŘENO</div></div>';
       var f=document.getElementById('zvf-'+i),t=document.getElementById('zvt-'+i);
       var fv=(f?f.value:'10:00').replace(':','.'),tv=(t?t.value:'18:00').replace(':','.');
       return '<div class="p-row"><div class="p-day">'+d+'</div><div class="p-time">'+fv+' – '+tv+'</div></div>';
     }).join('');
   })();
-  var jmeno = (document.getElementById('zv-vedouci')||{}).value||(stores[_zmrzStoreIdx]||{}).vedouci||'—';
-  var tel = (document.getElementById('zv-tel')||{}).value||(stores[_zmrzStoreIdx]||{}).vedouciTel||(stores[_zmrzStoreIdx]||{}).tel||'—';
-  var heading = '<div class="p-heading">OTEVÍRACÍ<br>DOBA</div><div class="p-sub">🍦 ZMRZLINA</div>';
+
+  var jmeno=(document.getElementById('zv-vedouci')||{}).value||(stores[_zmrzStoreIdx]||{}).vedouci||'—';
+  var tel=(document.getElementById('zv-tel')||{}).value||(stores[_zmrzStoreIdx]||{}).vedouciTel||(stores[_zmrzStoreIdx]||{}).tel||'—';
+
   win.document.write(
-    '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8">' +
-    '<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">' +
-    '<style>' + css + '</style>' +
-    '</head><body>' +
-    '<div class="poster">' +
-      '<div class="p-logo"><img src="' + logoSrc + '"></div>' +
-      heading +
-      '<div class="p-hours">' + rows + '</div>' +
-      '<hr class="p-divider">' +
-      '<div class="p-footer">' +
-        '<div class="p-footer-l">PROVOZOVATEL: Liberšké lahůdky a.s.<br>Na Spojce 670, 252 50 Vestec<br>IČO: 06679480   DIČ: CZ06679480</div>' +
-        '<div class="p-footer-r">ODPOVĚDNÝ VEDOUCÍ:<br>' + jmeno + '<br>Tel.: ' + tel + '</div>' +
-      '</div>' +
-      '<div class="p-icons"><img src="' + ikonySrc + '"></div>' +
-      '<div class="p-legal">Podle zákona o evidenci tržeb je prodávající povinen vystavit kupujícímu účtenku. Zároveň je povinen zaevidovat přijatou tržbu u správce daně online; v případě technického výpadku pak nejpozději do 48 hodin.</div>' +
-      '<div class="p-sites">' +
-        '<span>⊕ WWW.LIBERSKELAHUDKY.CZ</span>' +
-        '<span>⊕ WWW.LAHUDKY.CZ</span>' +
-        '<span>ⓕ LAHUDKY.CZ</span>' +
-        '<span>⊕ LIBERSKELAHUDKY</span>' +
-      '</div>' +
-    '</div>' +
-    '<scr'+'ipt>document.fonts.ready.then(function(){window.print();});</scr'+'ipt>' +
+    '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8">'+
+    '<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">'+
+    '<style>'+css+'</style>'+
+    '</head><body>'+
+    '<div class="poster">'+
+      '<div class="p-logo"><img src="'+logoSrc+'"></div>'+
+      '<div class="p-heading">OTEVÍRACÍ DOBA</div>'+
+      '<div class="p-sub">🍦 ZMRZLINA</div>'+
+      '<div class="p-hours">'+rows+'</div>'+
+      '<div class="p-sub2">ALERGENY</div>'+
+      '<div class="alrg">'+
+        '<div class="alrg-title">🥛 Mléčné (alergen 7)</div>'+
+        '<div class="alrg-body">Vanilka, Čokoláda, Jogurt, Mango, Slaný karamel, Pistácie</div>'+
+      '</div>'+
+      '<hr class="p-divider">'+
+      '<div class="alrg">'+
+        '<div class="alrg-title">🌱 Vegan</div>'+
+        '<div class="alrg-body">Meloun, Mandarinka, Borůvka, Jablko, Yuzu, Višeň, Jahoda, Rybíz, Rakytník, Malina, Pomeranč, Ostružina, Mrkev</div>'+
+      '</div>'+
+      '<div class="alrg-note">Žádná z příchutí neobsahuje alergeny 1–6 a 8–14.</div>'+
+      '<div class="p-footer">'+
+        '<div class="p-footer-l">PROVOZOVATEL: Libeřské lahůdky a.s.<br>Na Spojce 670, 252 50 Vestec<br>IČO: 06679480 &nbsp; DIČ: CZ06679480</div>'+
+        '<div class="p-footer-r">ODPOVĚDNÝ VEDOUCÍ:<br>'+jmeno+'<br>Tel.: '+tel+'</div>'+
+      '</div>'+
+      '<div class="p-icons"><img src="'+ikonySrc+'"></div>'+
+      '<div class="p-legal">Podle zákona o evidenci tržeb je prodávající povinen vystavit kupujícímu účtenku. Zároveň je povinen zaevidovat přijatou tržbu u správce daně online; v případě technického výpadku pak nejpozději do 48 hodin.</div>'+
+      '<div class="p-sites"><span>⊕ WWW.LIBERSKELAHUDKY.CZ</span><span>⊕ WWW.LAHUDKY.CZ</span><span>ⓕ LAHUDKY.CZ</span><span>⊕ LIBERSKELAHUDKY</span></div>'+
+    '</div>'+
+    '<scr'+'ipt>document.fonts.ready.then(function(){window.print();});</scr'+'ipt>'+
     '</body></html>'
   );
   win.document.close();
@@ -2592,6 +2846,55 @@ function plakatToggleClosed(i) {
   renderPlakat();
 }
 
+function slugStoreName(name) {
+  return name
+    .replace(/^\d+\.\s*/, '')       // "1. Florenc" → "Florenc"
+    .replace(/\s*[–—-]\s*/g, '_')   // " – " → "_"
+    .replace(/\s+/g, '_')           // mezery → "_"
+    .replace(/[,\/\\:*?"<>|()]/g,''); // zakázané znaky
+}
+function todayStr() {
+  var n=new Date();
+  return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+}
+function updatePlakatFilename() {
+  var hint=document.getElementById('pk-filename-hint');
+  var txt=document.getElementById('pk-filename-text');
+  if(!hint||!txt) return;
+  var idx=parseInt(document.getElementById('pk-store').value);
+  if(isNaN(idx)){hint.style.display='none';return;}
+  var s=stores[idx];
+  var fn='LL_OD_'+slugStoreName(s.name)+'_bezna_'+todayStr();
+  txt.textContent=fn;
+  hint.style.display='block';
+}
+function copyPlakatFilename() {
+  var txt=document.getElementById('pk-filename-text');
+  if(!txt) return;
+  navigator.clipboard.writeText(txt.textContent);
+  var btn=document.getElementById('pk-copy-btn');
+  var orig=btn.textContent; btn.textContent='✓ Zkopírováno';
+  setTimeout(function(){btn.textContent=orig;},2000);
+}
+function updateZmrzFilename() {
+  var hint=document.getElementById('zmrz-filename-hint');
+  var txt=document.getElementById('zmrz-filename-text');
+  if(!hint||!txt) return;
+  if(_zmrzStoreIdx<0){hint.style.display='none';return;}
+  var s=stores[_zmrzStoreIdx];
+  var fn='LL_OD_'+slugStoreName(s.name)+'_zmrzlinova_'+todayStr();
+  txt.textContent=fn;
+  hint.style.display='block';
+}
+function copyZmrzFilename() {
+  var txt=document.getElementById('zmrz-filename-text');
+  if(!txt) return;
+  navigator.clipboard.writeText(txt.textContent);
+  var btn=document.getElementById('zmrz-copy-btn');
+  var orig=btn.textContent; btn.textContent='✓ Zkopírováno';
+  setTimeout(function(){btn.textContent=orig;},2000);
+}
+
 function plakatLoadStore() {
   var idx=parseInt(document.getElementById('pk-store').value);
   if(isNaN(idx)) return;
@@ -2600,6 +2903,7 @@ function plakatLoadStore() {
   document.getElementById('pk-tel').value=s.vedouciTel||s.tel||'';
   buildPlakatEditor(s.hours);
   renderPlakat();
+  updatePlakatFilename();
 }
 
 function renderPlakat() {
@@ -2624,6 +2928,7 @@ function plakatReset() {
   document.getElementById('pk-tel').value='';
   buildPlakatEditor();
   renderPlakat();
+  var hint=document.getElementById('pk-filename-hint'); if(hint) hint.style.display='none';
 }
 
 function openPosterGenerator() {
@@ -2767,6 +3072,110 @@ function printPlakat() {
   win.document.close();
 }
 
+
+// ─── STÁTNÍ SVÁTKY — hromadný přehled ────────────────────────────
+function initSvatkyView() {
+  var sel = document.getElementById('sv-global-sel');
+  if (sel.options.length === 0) {
+    SAINTS.forEach(function(sv) {
+      var o = document.createElement('option');
+      o.value = sv.date;
+      o.textContent = sv.date + ' ' + sv.den + ' — ' + sv.name;
+      sel.appendChild(o);
+    });
+  }
+  renderSvatkyView();
+}
+
+function renderSvatkyView() {
+  var sel = document.getElementById('sv-global-sel');
+  var key = sel.value || (SAINTS[0] && SAINTS[0].date);
+  var sv = SAINTS.find(function(x){ return x.date === key; });
+  var wrap = document.getElementById('sv-global-table');
+  if (!sv || !wrap) return;
+
+  var fmt = function(raw){ return (!raw||raw==='ZAVŘENO') ? '<span style="color:var(--text3);font-style:italic;">zavřeno</span>' : raw; };
+
+  // Zjisti, na který den v týdnu svátek padá (index 0=Po…6=Ne)
+  var dayNames = {'Pondělí':0,'Úterý':1,'Středa':2,'Čtvrtek':3,'Pátek':4,'Sobota':5,'Neděle':6};
+  var dayIdx = dayNames[sv.den];
+
+  var rows = stores.map(function(s) {
+    var saints = s.saints || {};
+    var saved = saints[key] || {};
+    var isSet = !!(saved.from || saved.closed);
+    var specVal = saved.closed
+      ? '<span style="background:var(--closed-bg);color:var(--closed);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;">ZAVŘENO</span>'
+      : saved.from && saved.to
+        ? '<span style="font-weight:600;">'+saved.from+' – '+saved.to+'</span>'
+        : '<span style="color:var(--text3);">— nezadáno —</span>';
+
+    // Referenční hodiny pro tento den
+    var refRaw = (dayIdx !== undefined && s.hours) ? (s.hours[dayIdx] || '') : '';
+    var refVal = (!refRaw || refRaw === 'ZAVŘENO')
+      ? '<span style="color:var(--text3);font-style:italic;">zavřeno</span>'
+      : '<span style="color:var(--text2);">'+refRaw+'</span>';
+
+    return '<tr>'+
+      '<td style="font-weight:600;font-size:13px;">'+s.name+'</td>'+
+      '<td style="font-size:12px;color:var(--text2);">'+refVal+'</td>'+
+      '<td>'+specVal+'</td>'+
+      '<td style="text-align:center;">'+
+        (isSet
+          ? '<span style="background:var(--open-bg);color:var(--open);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;">✓ zadáno</span>'
+          : '<span style="background:var(--surface2);color:var(--text3);padding:2px 8px;border-radius:99px;font-size:11px;">—</span>')+
+      '</td>'+
+      '<td style="text-align:right;">'+
+        '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="openStoreByIdx('+stores.indexOf(s)+',true);setTimeout(function(){switchDTab(\'svatky\',document.querySelector(\'.dtab:nth-child(4)\'));},200)">Upravit →</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+
+  var setCount = stores.filter(function(s){ var d=(s.saints||{})[key]; return !!(d&&(d.from||d.closed)); }).length;
+
+  wrap.innerHTML =
+    '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">'+
+      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 18px;text-align:center;">'+
+        '<div style="font-family:var(--display);font-size:28px;color:var(--brand);">'+setCount+'</div>'+
+        '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Zadáno</div>'+
+      '</div>'+
+      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 18px;text-align:center;">'+
+        '<div style="font-family:var(--display);font-size:28px;color:var(--text3);">'+(stores.length-setCount)+'</div>'+
+        '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Nezadáno</div>'+
+      '</div>'+
+      '<div style="background:var(--soon-bg);border:1px solid var(--soon);border-radius:var(--r);padding:10px 18px;font-size:12px;color:var(--soon);display:flex;align-items:center;">'+
+        '⚠ Svátek padá na <strong style="margin-left:4px;">'+sv.den+'</strong>'+
+        (dayIdx !== undefined ? ' — prodejny mají v tento den běžně tyto hodiny' : '')+
+      '</div>'+
+    '</div>'+
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:13px;">'+
+      '<thead><tr style="background:var(--surface2);">'+
+        '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Prodejna</th>'+
+        '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Běžně '+sv.den+'</th>'+
+        '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Speciální hodiny svátku</th>'+
+        '<th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Stav</th>'+
+        '<th></th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table></div>';
+}
+
+function copySvatkyAll() {
+  var sel = document.getElementById('sv-global-sel');
+  var key = sel.value || (SAINTS[0] && SAINTS[0].date);
+  var sv = SAINTS.find(function(x){ return x.date === key; });
+  if (!sv) return;
+  var lines = [sv.date+' '+sv.den+' — '+sv.name, ''];
+  stores.forEach(function(s){
+    var saved = (s.saints||{})[key] || {};
+    var val = saved.closed ? 'ZAVŘENO' : (saved.from&&saved.to ? saved.from+' – '+saved.to : '(nezadáno)');
+    lines.push(s.name+': '+val);
+  });
+  navigator.clipboard.writeText(lines.join('\n'));
+  var btn = event.target; btn.textContent = 'Zkopírováno ✓';
+  setTimeout(function(){ btn.textContent = 'Kopírovat přehled'; }, 2000);
+}
 
 // ─── INIT ────────────────────────────────────────────────────────
 loadData();
