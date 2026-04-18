@@ -536,11 +536,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .shell { grid-template-rows: 50px 1fr; overflow-x: hidden; }
   .body  { grid-template-columns: 1fr; overflow-x: hidden; }
   .nav-tabs  { display: none; }
-  .nav-brand { font-size: 13px; margin-right: 0; }
-  .topnav    { padding: 0 14px; justify-content: space-between; }
+  .nav-brand { font-size: 13px; margin-right: 0; white-space: nowrap; }
+  .topnav    { padding: 0 12px; justify-content: space-between; overflow: hidden; }
   .nav-right { display: flex; align-items: center; gap: 6px; }
+  .nav-right .nav-tab { display: none; }
   .clock-display { display: none; }
-  #save-badge { display: block !important; font-size: 10px; padding: 2px 8px; max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #save-badge { display: block !important; font-size: 10px; padding: 2px 8px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #mob-menu-btn { display: none !important; }
 
   #mob-bottom-nav {
@@ -658,7 +659,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   </div>
 </div>
 
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileMenu()" style="display:none;"></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 
 <div class="body">
 
