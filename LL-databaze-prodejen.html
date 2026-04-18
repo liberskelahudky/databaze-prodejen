@@ -531,41 +531,154 @@ body {
 /* ═══ MOBILE ═══ */
 html, body { max-width: 100%; overflow-x: hidden; }
 
+/* Bottom nav — only mobile */
+#mob-bottom-nav {
+  display: none;
+}
+
 @media (max-width: 700px) {
-  .shell { grid-template-rows: 52px 1fr; overflow-x: hidden; }
+  /* ── Layout ── */
+  .shell { grid-template-rows: 50px 1fr; overflow-x: hidden; }
   .body  { grid-template-columns: 1fr; overflow-x: hidden; }
-  .nav-brand { display: none; }
-  .topnav { padding: 0 10px; gap: 6px; overflow: hidden; }
-  .nav-tabs { overflow-x: auto; flex-shrink: 1; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .nav-tabs::-webkit-scrollbar { display: none; }
-  .nav-tab   { padding: 6px 10px; font-size: 12px; flex-shrink: 0; }
+
+  /* ── Topnav: pouze logo + save badge ── */
+  .nav-tabs  { display: none; }
   .nav-right { display: none; }
-  .clock-display, .save-badge { display: none; }
+  .nav-brand { display: block; font-size: 13px; margin-right: 0; }
+  .topnav    { padding: 0 14px; justify-content: space-between; }
+  #mob-menu-btn { display: none !important; }
+
+  /* Save badge kompaktní vpravo v topnav */
+  #save-badge {
+    display: block !important;
+    font-size: 10px; padding: 2px 8px;
+    max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── Bottom nav ── */
+  #mob-bottom-nav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    background: var(--surface); border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+    height: 58px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .mob-nav-btn {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2px; border: none; background: none; cursor: pointer;
+    font-family: var(--font); color: var(--text3);
+    font-size: 9px; font-weight: 600; letter-spacing: .02em;
+    padding: 6px 2px; transition: color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-nav-btn .mob-nav-icon { font-size: 20px; line-height: 1; }
+  .mob-nav-btn.active { color: var(--brand); }
+  .mob-nav-btn.active .mob-nav-icon { transform: scale(1.1); }
+
+  /* ── More drawer ── */
+  #mob-more-drawer {
+    display: none; position: fixed; bottom: 58px; left: 0; right: 0; z-index: 199;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 10px 12px 12px; box-shadow: 0 -4px 20px rgba(0,0,0,.1);
+  }
+  #mob-more-drawer.open { display: block; }
+  #mob-more-overlay {
+    display: none; position: fixed; inset: 0; z-index: 198; background: rgba(0,0,0,.3);
+  }
+  #mob-more-overlay.open { display: block; }
+  .mob-more-grid {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 8px;
+  }
+  .mob-more-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 4px; border-radius: var(--r2);
+    border: none; background: var(--surface2); cursor: pointer;
+    font-family: var(--font); font-size: 10px; font-weight: 600; color: var(--text2);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-more-item .mob-more-icon { font-size: 22px; }
+  .mob-more-item.active { background: var(--brand-pale2); color: var(--brand); }
+  #mob-back-btn { display: block !important; }
+  /* Detail photo smaller on mobile */
+  #dt-photo-wrap { width: 52px !important; height: 52px !important; }
+
+  /* ── Sidebar: full-screen bottom sheet ── */
   .sidebar {
-    position: fixed; left: 0; top: 52px; bottom: 0; z-index: 50;
-    width: min(360px, 92vw); transform: translateX(-100%);
-    transition: transform .24s cubic-bezier(.4,0,.2,1);
-    box-shadow: 4px 0 32px rgba(0,0,0,.2);
+    position: fixed; left: 0; right: 0; bottom: 58px; z-index: 150;
+    height: 75vh; transform: translateY(100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -8px 32px rgba(0,0,0,.18);
   }
-  .sidebar.open { transform: translateX(0); }
-  #mob-menu-btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; border: none;
-    background: rgba(255,255,255,.15); border-radius: var(--r);
-    cursor: pointer; color: white; font-size: 18px; flex-shrink: 0;
+  .sidebar::before {
+    content: ''; display: block; width: 36px; height: 4px;
+    background: var(--border); border-radius: 99px;
+    margin: 10px auto 4px;
   }
-  .main { height: calc(100vh - 52px); overflow-y: auto; overflow-x: hidden; width: 100%; }
-  .live-view, .wolt-view { padding: 16px; }
-  .live-grid { grid-template-columns: 1fr 1fr !important; gap: 10px; }
-  .detail-topbar { padding: 12px 16px; flex-direction: column; gap: 10px; }
-  .tab-panel { padding: 16px; }
+  .sidebar.open { transform: translateY(0); }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 149; }
+  .sidebar-overlay.open { display: block; }
+
+  /* ── Main area: account for bottom nav ── */
+  .main {
+    height: calc(100vh - 50px - 58px);
+    overflow-y: auto; overflow-x: hidden; width: 100%;
+    padding-bottom: 8px;
+  }
+  #view-mapa { height: calc(100vh - 50px - 58px) !important; }
+
+  /* ── Content padding ── */
+  .live-view, .wolt-view { padding: 14px; }
+
+  /* ── Live grid: 1 col on very small, 2 on normal ── */
+  .live-grid { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+  @media (max-width: 380px) {
+    .live-grid { grid-template-columns: 1fr !important; }
+  }
+
+  /* ── Summary cards ── */
+  .summary-bar { gap: 6px; flex-wrap: wrap; }
+  .sum-card { padding: 10px 12px; min-width: 60px; flex: 1; }
+  .sum-num { font-size: 24px; }
+
+  /* ── Detail topbar ── */
+  .detail-topbar { padding: 12px 14px; flex-direction: column; gap: 8px; }
+  .dt-actions { flex-wrap: wrap; gap: 6px; }
+  .dt-actions .btn { flex: 1; min-width: 80px; justify-content: center; font-size: 12px; padding: 8px 10px; }
+
+  /* ── Detail tabs: scrollable ── */
+  .detail-tabs { padding: 0 10px; }
+  .dtab { padding: 10px 10px; font-size: 11px; }
+
+  /* ── Forms ── */
+  .tab-panel { padding: 14px; }
   .field-grid, .field-grid-2 { grid-template-columns: 1fr !important; }
   .hours-display { grid-template-columns: repeat(4,1fr) !important; }
-  .dtab { padding: 10px 12px; font-size: 12px; }
-  #view-mapa { height: calc(100vh - 52px) !important; }
-  .summary-bar { gap: 8px; }
-  .sum-card { padding: 12px 14px; min-width: 70px; }
+  .sv-mode-btn { font-size: 10px !important; padding: 4px 8px !important; }
+
+  /* ── Tables: horizontal scroll ── */
   .wolt-grid { grid-template-columns: 1fr !important; }
+  .sv-card-btns { flex-wrap: wrap; }
+  #sv-global-table table, .tv-table, .svatky-table { font-size: 11px; }
+  #sv-global-table td, #sv-global-table th { padding: 6px 8px !important; }
+
+  /* ── Overflow tables wrap ── */
+  #sv-global-table, #bulk-tv-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Live card smaller ── */
+  .lc-photo { height: 80px; }
+  .lc-body { padding: 10px 10px 12px; }
+  .lc-name { font-size: 11px; }
+  .lc-status { font-size: 10px; padding: 2px 8px; }
+  .lc-hours { font-size: 10px; }
+
+  /* ── Section notices ── */
+  .section-notice { font-size: 12px; }
+
+  /* ── Modal full width ── */
+  .modal { width: 94vw; }
 }
 
 /* ═══ PRINT ═══ */
@@ -604,7 +717,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   </div>
 </div>
 
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileMenu()" style="display:none;"></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 
 <div class="body">
 
@@ -734,6 +847,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     <div id="store-detail" style="display:none;">
       <div class="detail-topbar">
         <div class="dt-left" style="display:flex;align-items:center;gap:14px;">
+          <button id="mob-back-btn" onclick="toggleMobileMenu()" style="display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--brand);padding:4px 8px 4px 0;flex-shrink:0;">‹</button>
           <div id="dt-photo-wrap" style="width:72px;height:72px;border-radius:var(--r2);overflow:hidden;background:var(--surface2);flex-shrink:0;display:none;">
             <img id="dt-photo" src="" style="width:100%;height:100%;object-fit:cover;" alt="">
           </div>
@@ -1223,6 +1337,50 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 </div><!-- /main-area -->
 </div><!-- /body -->
+
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mob-bottom-nav">
+  <button class="mob-nav-btn active" id="mbn-live" onclick="mobNav('live')">
+    <span class="mob-nav-icon">🏠</span>Přehled
+  </button>
+  <button class="mob-nav-btn" id="mbn-store" onclick="mobNav('store')">
+    <span class="mob-nav-icon">🏪</span>Prodejny
+  </button>
+  <button class="mob-nav-btn" id="mbn-svatky" onclick="mobNav('svatky')">
+    <span class="mob-nav-icon">📅</span>Svátky
+  </button>
+  <button class="mob-nav-btn" id="mbn-mapa" onclick="mobNav('mapa')">
+    <span class="mob-nav-icon">🗺</span>Mapa
+  </button>
+  <button class="mob-nav-btn" id="mbn-more" onclick="toggleMoreDrawer()">
+    <span class="mob-nav-icon">⋯</span>Více
+  </button>
+</nav>
+
+<!-- MORE DRAWER -->
+<div id="mob-more-overlay" onclick="closeMoreDrawer()"></div>
+<div id="mob-more-drawer">
+  <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Další funkce</div>
+  <div class="mob-more-grid">
+    <button class="mob-more-item" id="mmi-wolt" onclick="mobNav('wolt');closeMoreDrawer()">
+      <span class="mob-more-icon">🛵</span>Wolt
+    </button>
+    <button class="mob-more-item" id="mmi-tvradia" onclick="mobNav('tvradia');closeMoreDrawer()">
+      <span class="mob-more-icon">📺</span>TV/Rádio
+    </button>
+    <button class="mob-more-item" id="mmi-plakat" onclick="mobNav('plakat');closeMoreDrawer()">
+      <span class="mob-more-icon">🖨</span>Plakát OD
+    </button>
+    <button class="mob-more-item" id="mmi-zmrzlina" onclick="mobNav('zmrzlina');closeMoreDrawer()">
+      <span class="mob-more-icon">🍦</span>Zmrzliny
+    </button>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+    <button class="btn btn-ghost" onclick="debugSheets();closeMoreDrawer()" style="font-size:12px;flex:1;">🔧 Test Sheets</button>
+    <button class="btn btn-ghost" onclick="printHoursSheet();closeMoreDrawer()" style="font-size:12px;flex:1;">↓ PDF hodin</button>
+  </div>
+</div>
+
 </div><!-- /shell -->
 
 <!-- MODAL: Nová prodejna -->
@@ -1642,9 +1800,17 @@ setInterval(updateClock, 1000);
 // ─── VIEWS ───────────────────────────────────────────────────────
 function showView(v) {
   currentView = v;
+  // Desktop tabs
   document.querySelectorAll('.nav-tab').forEach(function(b){ b.classList.remove('active'); });
   var idx = {live:0,wolt:1,tvradia:2,store:3,plakat:4,zmrzlina:5,svatky:6,mapa:7}[v];
   if (idx !== undefined) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  // Mobile bottom nav
+  var mbnMap = {live:'mbn-live',store:'mbn-store',svatky:'mbn-svatky',mapa:'mbn-mapa'};
+  var mmiMap = {wolt:'mmi-wolt',tvradia:'mmi-tvradia',plakat:'mmi-plakat',zmrzlina:'mmi-zmrzlina'};
+  document.querySelectorAll('.mob-nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.mob-more-item').forEach(function(b){ b.classList.remove('active'); });
+  if (mbnMap[v]) { var el=document.getElementById(mbnMap[v]); if(el) el.classList.add('active'); }
+  if (mmiMap[v]) { var el2=document.getElementById(mmiMap[v]); if(el2) el2.classList.add('active'); var mb=document.getElementById('mbn-more'); if(mb) mb.classList.add('active'); }
   document.getElementById('view-live').style.display = v==='live' ? 'block' : 'none';
   document.getElementById('view-wolt').style.display = v==='wolt' ? 'block' : 'none';
   document.getElementById('view-tvradia').style.display = v==='tvradia' ? 'block' : 'none';
@@ -1894,10 +2060,13 @@ function openStoreByIdx(idx, switchToStoreView) {
   document.getElementById('store-detail').style.display = 'block';
   fillStoreDetail(stores[idx]);
   renderSidebar();
-  // Na mobilu zavři sidebar
+  // Na mobilu zavři sidebar sheet a přejdi na detail
   if (window.innerWidth <= 700) {
     document.querySelector('.sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('open');
+    // Aktivuj store tab v bottom nav
+    document.querySelectorAll('.mob-nav-btn').forEach(function(b){ b.classList.remove('active'); });
+    var mbn = document.getElementById('mbn-store'); if(mbn) mbn.classList.add('active');
   }
 }
 
@@ -2640,20 +2809,54 @@ function openPosterGenerator() {
 function toggleMobileMenu() {
   var sb = document.querySelector('.sidebar');
   var ov = document.getElementById('sidebar-overlay');
-  var open = sb.classList.toggle('open');
-  ov.classList.toggle('open', open);
+  var isOpen = sb.classList.contains('open');
+  sb.classList.toggle('open', !isOpen);
+  ov.style.display = !isOpen ? 'block' : 'none';
+  if (!isOpen) ov.classList.add('open');
+  else ov.classList.remove('open');
 }
 
 function initMobile() {
+  // Old hamburger - not used on mobile anymore
   var btn = document.getElementById('mob-menu-btn');
-  if (window.innerWidth <= 700) btn.style.display = 'flex';
+  if (btn) btn.style.display = 'none';
   window.addEventListener('resize', function() {
-    btn.style.display = window.innerWidth <= 700 ? 'flex' : 'none';
     if (window.innerWidth > 700) {
       document.querySelector('.sidebar').classList.remove('open');
       document.getElementById('sidebar-overlay').classList.remove('open');
+      closeMoreDrawer();
     }
   });
+}
+
+function mobNav(v) {
+  // On mobile, "store" opens sidebar sheet, then switches view
+  if (v === 'store' && window.innerWidth <= 700) {
+    showView('store');
+    toggleMobileMenu();
+    return;
+  }
+  showView(v);
+}
+
+function toggleMoreDrawer() {
+  var drawer  = document.getElementById('mob-more-drawer');
+  var overlay = document.getElementById('mob-more-overlay');
+  var isOpen  = drawer.classList.contains('open');
+  if (isOpen) {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+  } else {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+  }
+}
+
+function closeMoreDrawer() {
+  var drawer  = document.getElementById('mob-more-drawer');
+  var overlay = document.getElementById('mob-more-overlay');
+  if (drawer)  drawer.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
 }
 
 /* ── TISK / PDF PŘEHLED HODIN ── */
