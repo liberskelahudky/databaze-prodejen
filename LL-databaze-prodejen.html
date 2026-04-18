@@ -452,6 +452,25 @@ body {
 .sv-set { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
 .sv-set.yes { background: var(--open-bg); color: var(--open); }
 .sv-set.no  { color: var(--text3); }
+.sv-mode-btn {
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  padding: 4px 10px; border-radius: 99px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2); color: var(--text3);
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.sv-mode-btn.on-standard { background: var(--surface3); color: var(--text2); border-color: var(--text3); }
+.sv-mode-btn.on-sobota   { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.sv-mode-btn.on-closed   { background: var(--closed-bg); color: var(--closed); border-color: var(--closed); }
+.sv-mode-btn.on-custom   { background: var(--soon-bg); color: var(--soon); border-color: var(--soon); }
+.sv-card { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 7px; }
+.sv-card:last-child { border-bottom: none; }
+.sv-card-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sv-card-date { font-size: 11px; font-weight: 700; color: var(--text3); font-variant-numeric: tabular-nums; min-width: 44px; }
+.sv-card-day  { font-size: 11px; color: var(--text3); min-width: 52px; }
+.sv-card-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.sv-card-btns { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.sv-card-preview { font-size: 12px; color: var(--text2); font-weight: 500; }
 
 /* ═══ TV/RÁDIO ═══ */
 .tv-table { width: 100%; border-collapse: collapse; }
@@ -892,13 +911,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
           <strong>Zákon č. 245/2000 Sb.:</strong> Prodejna nemusí být ve svátek otevřena. Pokud otevřena je, zaměstnancům náleží příplatek za sváteční práci.<br>
           Po zadání speciálních hodin je nutné aktualizovat: <strong>Google Maps</strong> (speciální hodiny), <strong>Wolt</strong> (portál / email 48 h předem), <strong>Firmy.cz</strong> (poznámka), <strong>web</strong>.
         </div>
-        <table class="svatky-table" id="sv-table">
+        <table class="svatky-table" id="sv-table" style="display:none;">
           <thead><tr>
             <th>Datum</th><th>Den</th><th>Svátek</th>
             <th>Speciální doba (od – do)</th><th>Stav</th>
           </tr></thead>
           <tbody id="sv-tbody"></tbody>
         </table>
+        <div id="sv-cards-container"></div>
         <div style="margin-top:12px;display:flex;gap:8px;">
           <button class="btn" onclick="copySvatky()">Kopírovat přehled</button>
           <button class="btn btn-ghost" onclick="clearSvatky()">Vymazat vše</button>
@@ -1182,6 +1202,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
         <label style="font-size:12px;color:var(--text2);">Svátek:</label>
         <select id="sv-global-sel" onchange="renderSvatkyView()" style="padding:7px 10px;font-size:13px;font-family:var(--font);border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;"></select>
         <button class="btn" onclick="copySvatkyAll()">Kopírovat přehled</button>
+        <button class="btn" onclick="printPlakatSvatekAll()" style="background:#6B3012;color:white;">🖨 Tisknout plakáty</button>
       </div>
     </div>
     <div id="sv-global-table"></div>
@@ -1543,6 +1564,28 @@ function getStoreStatus(s) {
   var h = now.getHours(), m = now.getMinutes();
   var cur = h * 60 + m;
 
+  // Zkontroluj svátek pro dnešek
+  var saintKey = todaySaintKey ? todaySaintKey() : '';
+  if (saintKey) {
+    var effH = getEffectiveHoursForSaint(s, saintKey);
+    if (effH) {
+      if (effH === 'ZAVŘENO') return {status:'closed', label:'Zavřeno (svátek)', hours:'Svátek — zavřeno', exception:true};
+      var parts = effH.replace('–','-').split('-');
+      var fM2 = toMinutes((parts[0]||'').trim()), tM2 = toMinutes((parts[1]||'').trim());
+      if (!isNaN(fM2) && !isNaN(tM2)) {
+        if (cur >= fM2 && cur < tM2) {
+          var left2 = tM2 - cur;
+          if (left2 <= 30) return {status:'soon', label:'Zavírá za '+left2+' min (svátek)', hours:effH, exception:true};
+          return {status:'open', label:'Otevřeno (svátek)', hours:effH, exception:true};
+        }
+        if (cur < fM2) {
+          var wait2 = fM2 - cur;
+          if (wait2 <= 60) return {status:'soon', label:'Otevře za '+wait2+' min (svátek)', hours:effH, exception:true};
+        }
+        return {status:'closed', label:'Zavřeno (svátek)', hours:effH, exception:true};
+      }
+    }
+  }
   // Zkontroluj výjimku pro dnešek
   var exc = s.exceptions && s.exceptions[todayKey()];
   if (exc) {
@@ -1787,13 +1830,14 @@ function renderSidebar() {
     var matchF = activeFilters.length===0 || activeFilters.every(function(f){ return matchesFilter(s,f); });
     return matchQ && matchF;
   });
-  if (sbSort==='alpha') {
-    filtered = filtered.slice().sort(function(a,b){
-      var na = a.name.replace(/^\d+\.\s*/,'').toLowerCase();
-      var nb = b.name.replace(/^\d+\.\s*/,'').toLowerCase();
+  filtered = filtered.slice().sort(function(a,b){
+    if (sbSort==='alpha') {
+      var na = a.name.replace(/^[0-9]+\.\s*/,'').toLowerCase();
+      var nb = b.name.replace(/^[0-9]+\.\s*/,'').toLowerCase();
       return na.localeCompare(nb,'cs');
-    });
-  }
+    }
+    return parseInt(a.id,10) - parseInt(b.id,10);
+  });
   list.innerHTML = filtered.map(function(s) {
     var idx = stores.indexOf(s);
     var st = getStoreStatus(s);
@@ -2183,76 +2227,205 @@ function renderHoursDisplay(s) {
 }
 
 // ─── SVÁTKY TAB ──────────────────────────────────────────────────
+// ─── SAINTS HELPERS ─────────────────────────────────────────────
+var DAY_NAMES_IDX = {'Pondělí':0,'Úterý':1,'Středa':2,'Čtvrtek':3,'Pátek':4,'Sobota':5,'Neděle':6};
+
+function todaySaintKey() {
+  var n = new Date();
+  return String(n.getDate()).padStart(2,'0')+'.'+String(n.getMonth()+1).padStart(2,'0')+'.';
+}
+
+function getSvMode(saved) {
+  if (!saved || (!saved.mode && !saved.closed && !saved.from)) return null;
+  if (saved.mode) return saved.mode;
+  if (saved.closed) return 'closed';
+  if (saved.from) return 'custom';
+  return null;
+}
+
+function getEffectiveHoursForSaint(s, dateKey) {
+  var sv = SAINTS.find(function(x){ return x.date === dateKey; });
+  if (!sv) return null;
+  var dayIdx = DAY_NAMES_IDX[sv.den];
+  var saved = (s.saints || {})[dateKey] || {};
+  var mode = getSvMode(saved);
+  if (!mode) return null;
+  if (mode === 'closed')   return 'ZAVŘENO';
+  if (mode === 'standard') return (s.hours && s.hours[dayIdx]) || 'ZAVŘENO';
+  if (mode === 'sobota')   return (s.hours && s.hours[5]) || 'ZAVŘENO';
+  if (mode === 'custom' && saved.from && saved.to) return saved.from + '\u2013' + saved.to;
+  return null;
+}
+
+function svModeLabel(mode, s, dateKey) {
+  if (!mode) return '<span style="color:var(--text3);font-style:italic;">neurčeno</span>';
+  var h = getEffectiveHoursForSaint(s, dateKey);
+  var color = mode==='closed'?'var(--closed)':mode==='sobota'?'#1d4ed8':mode==='custom'?'var(--soon)':'var(--text2)';
+  return '<span style="color:'+color+';font-weight:600;">'+(h||'\u2014')+'</span>';
+}
+
 function renderSvatkyTable(s) {
-  // Referenční hodiny
   var h = s.hours || [];
   var fmt = function(raw){ return (!raw||raw==='ZAVŘENO') ? 'zavřeno' : raw; };
-  var wday = fmt(h[0]); // Po = index 0, většina má Po-Pá stejné
-  var sat  = fmt(h[5]);
-  var sun  = fmt(h[6]);
   var refEl = document.getElementById('sv-ref-hours');
   if(refEl) {
-    document.getElementById('sv-ref-wday').textContent = 'Po–Pá: ' + wday;
-    document.getElementById('sv-ref-sat').textContent  = 'So: ' + sat;
-    document.getElementById('sv-ref-sun').textContent  = 'Ne: ' + sun;
+    document.getElementById('sv-ref-wday').textContent = 'Po\u2013P\xe1: ' + fmt(h[0]);
+    document.getElementById('sv-ref-sat').textContent  = 'So: '    + fmt(h[5]);
+    document.getElementById('sv-ref-sun').textContent  = 'Ne: '    + fmt(h[6]);
     refEl.style.display = 'flex';
   }
   var saints = s.saints || {};
-  var tbody = document.getElementById('sv-tbody');
-  tbody.innerHTML = SAINTS.map(function(sv,i){
+  var container = document.getElementById('sv-cards-container');
+  if (!container) return;
+
+  container.innerHTML = SAINTS.map(function(sv, i) {
     var saved = saints[sv.date] || {};
-    var isCl = !!saved.closed;
-    var isSet = !!(saved.from||saved.closed);
-    return '<tr>'+
-      '<td class="sv-mono">'+sv.date+'</td>'+
-      '<td class="sv-mono">'+sv.den+'</td>'+
-      '<td><span class="sv-name">'+sv.name+'</span><span class="sv-law">'+sv.law+'</span></td>'+
-      '<td style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'+
-        '<input class="sv-input" type="time" id="svf-'+i+'" value="'+(saved.from||'')+'" '+(isCl?'disabled':'')+' onchange="saveSv(\''+sv.date+'\','+i+')" />'+
-        '<span style="font-size:11px;color:var(--text3)">–</span>'+
-        '<input class="sv-input" type="time" id="svt-'+i+'" value="'+(saved.to||'')+'" '+(isCl?'disabled':'')+' onchange="saveSv(\''+sv.date+'\','+i+')" />'+
-        '<button class="sv-zav'+(isCl?' on':'')+'" id="svcl-'+i+'" onclick="toggleSv(\''+sv.date+'\','+i+')">zavřeno</button>'+
-      '</td>'+
-      '<td><span class="sv-set '+(isSet?'yes':'no')+'" id="svst-'+i+'">'+(isSet?'zadáno':'—')+'</span></td>'+
-    '</tr>';
+    var mode  = getSvMode(saved);
+    var dayIdx = DAY_NAMES_IDX[sv.den];
+    var stdH = fmt(h[dayIdx] || '');
+    var satH = fmt(h[5] || '');
+    var customFrom = (mode==='custom' && saved.from) ? saved.from : '';
+    var customTo   = (mode==='custom' && saved.to)   ? saved.to   : '';
+
+    function modeBtn(m, label, cls) {
+      var on = mode===m;
+      return '<button class="sv-mode-btn'+(on?' '+cls:'')+'" onclick="setSvMode(\''+sv.date+'\',\''+m+'\','+i+')">' + label + '</button>';
+    }
+
+    var customInputs = '<span id="sv-custom-wrap-'+i+'" style="display:'+(mode==='custom'?'inline-flex':'none')+';align-items:center;gap:4px;">'
+      +'<input class="sv-input" type="time" id="svf-'+i+'" value="'+customFrom+'" oninput="saveSvCustom(\''+sv.date+'\','+i+')" style="width:80px;">'
+      +'<span style="font-size:11px;color:var(--text3);">\u2013</span>'
+      +'<input class="sv-input" type="time" id="svt-'+i+'" value="'+customTo+'" oninput="saveSvCustom(\''+sv.date+'\','+i+')" style="width:80px;">'
+      +'</span>';
+
+    return '<div class="sv-card">'
+      +'<div class="sv-card-head">'
+        +'<span class="sv-card-date">'+sv.date+'</span>'
+        +'<span class="sv-card-day">'+sv.den+'</span>'
+        +'<span class="sv-card-name">'+sv.name+'</span>'
+        +'<span id="sv-preview-'+i+'" class="sv-card-preview" style="margin-left:auto;">'+svModeLabel(mode,s,sv.date)+'</span>'
+        +'<button onclick="printPlakatSvatek('+stores.indexOf(s)+',\''+sv.date+'\')" title="Tisknout pl\xe1k\xe1t pro tento sv\xe1tek" style="margin-left:8px;font-family:var(--font);font-size:10px;font-weight:600;padding:3px 8px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text3);cursor:pointer;white-space:nowrap;">\ud83d\udda8</button>'
+      +'</div>'
+      +'<div class="sv-card-btns">'
+        +modeBtn('standard','Standardní ('+stdH+')','on-standard')
+        +modeBtn('sobota','Jako sobotu ('+satH+')','on-sobota')
+        +modeBtn('closed','Zav\u0159eno','on-closed')
+        +modeBtn('custom','Speci\xe1ln\xed:','on-custom')
+        +customInputs
+      +'</div>'
+    +'</div>';
   }).join('');
 }
 
-function toggleSv(key,i){
-  var s=stores[currentStoreIdx]; if(!s) return;
-  if(!s.saints) s.saints={};
-  var d=s.saints[key]||{};
-  d.closed=!d.closed; if(d.closed){d.from='';d.to='';}
-  s.saints[key]=d; markDirty(); renderSvatkyTable(s);
+function setSvMode(dateKey, mode, i) {
+  var s = stores[currentStoreIdx]; if(!s) return;
+  if(!s.saints) s.saints = {};
+  var saved = s.saints[dateKey] || {};
+  var current = getSvMode(saved);
+  if (current === mode) {
+    s.saints[dateKey] = {};
+  } else {
+    s.saints[dateKey] = {mode: mode, from: saved.from||'', to: saved.to||''};
+  }
+  markDirty();
+  renderSvatkyTable(s);
 }
 
-function saveSv(key,i){
-  var s=stores[currentStoreIdx]; if(!s) return;
-  if(!s.saints) s.saints={};
-  var f=document.getElementById('svf-'+i), t=document.getElementById('svt-'+i);
-  s.saints[key]={from:f?f.value:'',to:t?t.value:'',closed:false};
+function saveSvCustom(dateKey, i) {
+  var s = stores[currentStoreIdx]; if(!s) return;
+  if(!s.saints) s.saints = {};
+  var f = document.getElementById('svf-'+i);
+  var t = document.getElementById('svt-'+i);
+  s.saints[dateKey] = {mode:'custom', from: f?f.value:'', to: t?t.value:''};
   markDirty();
-  var st=document.getElementById('svst-'+i);
-  if(st){st.textContent=(f&&f.value)?'zadáno':'—'; st.className='sv-set '+((f&&f.value)?'yes':'no');}
+  var prev = document.getElementById('sv-preview-'+i);
+  if (prev) prev.innerHTML = svModeLabel('custom', s, dateKey);
 }
 
 function copySvatky(){
   var s=stores[currentStoreIdx]; if(!s) return;
-  var lines=['Státní svátky 2026 — '+s.name,''];
-  SAINTS.forEach(function(sv,i){
-    var saved=(s.saints&&s.saints[sv.date])||{};
-    var val=saved.closed?'ZAVŘENO':(saved.from&&saved.to?saved.from+'–'+saved.to:'(standardní provoz)');
-    lines.push(sv.date+' '+sv.den+' — '+sv.name+': '+val);
+  var lines=['St\xe1tn\xed sv\xe1tky 2026 \u2014 '+s.name,''];
+  SAINTS.forEach(function(sv){
+    var eff = getEffectiveHoursForSaint(s, sv.date);
+    lines.push(sv.date+' '+sv.den+' \u2014 '+sv.name+': '+(eff||'(neur\u010deno)'));
   });
-  lines.push('','⚠ Aktualizovat: Google Maps (speciální hodiny) · Wolt (48h předem) · Firmy.cz · web lahudky.cz');
+  lines.push('','\u26a0 Aktualizovat: Google Maps \u00b7 Wolt (48h p\u0159edem) \u00b7 Firmy.cz \u00b7 web lahudky.cz');
   navigator.clipboard.writeText(lines.join('\n'));
+  var btn = event.target; btn.textContent = 'Zkoп\xedrov\xe1no \u2713';
+  setTimeout(function(){ btn.textContent = 'Kop\xedrovat p\u0159ehled'; }, 2000);
 }
 
 function clearSvatky(){
   var s=stores[currentStoreIdx]; if(!s) return;
-  if(!confirm('Vymazat všechny speciální hodiny svátků pro tuto prodejnu?')) return;
+  if(!confirm('Vymazat v\u0161echny speci\xe1ln\xed hodiny sv\xe1tk\u016f pro tuto prodejnu?')) return;
   s.saints={}; markDirty(); renderSvatkyTable(s);
 }
+
+// \u2500\u2500 Tisk pl\xe1k\xe1tu pro konkr\xe9tn\xed sv\xe1tek \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function printPlakatSvatek(storeIdx, dateKey) {
+  var s = storeIdx >= 0 ? stores[storeIdx] : stores[currentStoreIdx];
+  if (!s) { alert('Vyber prodejnu'); return; }
+  var sv = SAINTS.find(function(x){ return x.date === dateKey; });
+  if (!sv) return;
+  var dayIdx = DAY_NAMES_IDX[sv.den];
+  var hours = (s.hours || ['','','','','','','']).slice();
+  var effH = getEffectiveHoursForSaint(s, dateKey);
+  if (effH) hours[dayIdx] = effH;
+
+  var logoEl = document.getElementById('pk-logo');
+  var logoSrc = logoEl ? logoEl.src : '';
+  var win = window.open('','_blank');
+  if (!win) { alert('Povol\u010d pop-up okna v prohl\xed\u017ee\u010di'); return; }
+
+  var DAYS_U = ['POND\u011aL\xcd','\xda\u00daTER\xdd','ST\u0158EDA','\u010cTVRTEK','P\xc1TEK','SOBOTA','NED\u011aLE'];
+  var rows = DAYS_U.map(function(d,i){
+    var raw = hours[i] || '';
+    var isCl = !raw || raw === 'ZAVŘENO';
+    var hl = i === dayIdx ? 'background:#fff3cd;border-radius:4px;padding:0 4px;' : '';
+    if (isCl) return '<div class="p-row" style="'+hl+'"><div class="p-day">'+d+'</div><div class="p-time zav">ZAV\u0158ENO</div></div>';
+    var parts = raw.replace('\u2013','-').split('-');
+    var fv = (parts[0]||'').trim().replace(':','.') || '\u2014';
+    var tv = (parts[1]||'').trim().replace(':','.') || '\u2014';
+    return '<div class="p-row" style="'+hl+'"><div class="p-day">'+d+'</div><div class="p-time">'+fv+' \u2013 '+tv+'</div></div>';
+  }).join('');
+
+  var css = '*{box-sizing:border-box;margin:0;padding:0;}'
+    +'body{width:210mm;min-height:297mm;background:#fff9f4;display:flex;justify-content:center;}'
+    +'.poster{width:190mm;padding:14mm 12mm;display:flex;flex-direction:column;}'
+    +'.p-logo{text-align:center;margin-bottom:8mm;}'
+    +'.p-logo img{height:18mm;object-fit:contain;}'
+    +'.p-svatek{font-family:"Bebas Neue",sans-serif;font-size:9mm;color:#b45309;text-align:center;letter-spacing:.05em;margin-bottom:2mm;}'
+    +'.p-heading{font-family:"Bebas Neue",sans-serif;font-size:36mm;color:#6B3012;line-height:.85;text-align:center;margin-bottom:7mm;}'
+    +'.p-row{display:flex;justify-content:space-between;align-items:baseline;line-height:1.2;margin-bottom:1mm;}'
+    +'.p-day{font-family:"Bebas Neue",sans-serif;font-size:13mm;color:#6B3012;}'
+    +'.p-time{font-family:"Bebas Neue",sans-serif;font-size:13mm;color:#6B3012;white-space:nowrap;}'
+    +'.p-time.zav{font-size:9.5mm;color:#a0786a;}'
+    +'.p-divider{border:none;border-top:.5mm solid #6B3012;opacity:.5;margin:3mm 0;}'
+    +'.p-footer{display:flex;justify-content:space-between;gap:8mm;margin-top:3mm;}'
+    +'.p-footer-l,.p-footer-r{font-family:"Open Sans",sans-serif;font-size:2.3mm;color:#6B3012;line-height:1.6;}'
+    +'.p-footer-r{text-align:right;font-weight:700;}'
+    +'@media print{@page{size:A4 portrait;margin:0;}html,body{width:210mm;min-height:297mm;}}';
+
+  win.document.write('<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8">'
+    +'<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">'
+    +'<style>'+css+'</style>'
+    +'</head><body><div class="poster">'
+    +(logoSrc?'<div class="p-logo"><img src="'+logoSrc+'"></div>':'')
+    +'<div class="p-svatek">'+sv.date+' '+sv.den.toUpperCase()+' \u2014 '+sv.name.toUpperCase()+'</div>'
+    +'<div class="p-heading">OT<br>EV\xcdR<br>AC\xcd<br>DOBA</div>'
+    +'<div>'+rows+'</div>'
+    +'<hr class="p-divider">'
+    +'<div class="p-footer">'
+      +'<div class="p-footer-l">PROVOZOVATEL: Libeřské lah\u016fdky a.s.<br>'+(s.addr||'')+'</div>'
+      +'<div class="p-footer-r">ODPOV\u011aDN\xdd VEDOUC\xcd:<br>'+(s.vedouci||'\u2014')+'<br>Tel.: '+(s.vedouciTel||s.tel||'\u2014')+'</div>'
+    +'</div>'
+    +'</div>'
+    +'<script>document.fonts.ready.then(function(){window.print();});<\/script>'
+    +'</body></html>');
+  win.document.close();
+}
+
+
 
 // ─── CHECKLIST ───────────────────────────────────────────────────
 function selClType(el){
@@ -3181,6 +3354,16 @@ function printPlakat() {
 
 
 // ─── STÁTNÍ SVÁTKY — hromadný přehled ────────────────────────────
+function printPlakatSvatekAll() {
+  var sel = document.getElementById('sv-global-sel');
+  var key = sel.value || (SAINTS[0] && SAINTS[0].date);
+  var filtered = stores.filter(function(s){ return !!getSvMode((s.saints||{})[key]||{}); });
+  if (filtered.length === 0) { alert('Žádná prodejna nemá pro tento svátek zadané hodiny.'); return; }
+  filtered.forEach(function(s,i){
+    setTimeout(function(){ printPlakatSvatek(stores.indexOf(s), key); }, i*500);
+  });
+}
+
 function initSvatkyView() {
   var sel = document.getElementById('sv-global-sel');
   if (sel.options.length === 0) {
@@ -3201,72 +3384,130 @@ function renderSvatkyView() {
   var wrap = document.getElementById('sv-global-table');
   if (!sv || !wrap) return;
 
-  var fmt = function(raw){ return (!raw||raw==='ZAVŘENO') ? '<span style="color:var(--text3);font-style:italic;">zavřeno</span>' : raw; };
+  var dayIdx = DAY_NAMES_IDX[sv.den];
+  var setCount = stores.filter(function(s){ return !!getSvMode((s.saints||{})[key]||{}); }).length;
 
-  // Zjisti, na který den v týdnu svátek padá (index 0=Po…6=Ne)
-  var dayNames = {'Pondělí':0,'Úterý':1,'Středa':2,'Čtvrtek':3,'Pátek':4,'Sobota':5,'Neděle':6};
-  var dayIdx = dayNames[sv.den];
+  var rows = stores.map(function(s, si) {
+    var saved = (s.saints || {})[key] || {};
+    var mode  = getSvMode(saved);
+    var effH  = getEffectiveHoursForSaint(s, key);
+    var stdH  = ((s.hours && s.hours[dayIdx]) || '') || 'zavřeno';
+    if (stdH === 'ZAVŘENO') stdH = 'zavřeno';
+    var satH  = ((s.hours && s.hours[5]) || '') || 'zavřeno';
+    if (satH === 'ZAVŘENO') satH = 'zavřeno';
 
-  var rows = stores.map(function(s) {
-    var saints = s.saints || {};
-    var saved = saints[key] || {};
-    var isSet = !!(saved.from || saved.closed);
-    var specVal = saved.closed
-      ? '<span style="background:var(--closed-bg);color:var(--closed);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;">ZAVŘENO</span>'
-      : saved.from && saved.to
-        ? '<span style="font-weight:600;">'+saved.from+' – '+saved.to+'</span>'
-        : '<span style="color:var(--text3);">— nezadáno —</span>';
+    function modeBtn(m, label, cls) {
+      var on = mode === m;
+      return '<button class="sv-mode-btn'+(on?' '+cls:'')+'" '
+        +'onclick="setBulkSvModeOne(\''+key+'\',\''+m+'\','+si+')" '
+        +'style="font-size:10px;padding:3px 8px;">'+label+'</button>';
+    }
 
-    // Referenční hodiny pro tento den
-    var refRaw = (dayIdx !== undefined && s.hours) ? (s.hours[dayIdx] || '') : '';
-    var refVal = (!refRaw || refRaw === 'ZAVŘENO')
-      ? '<span style="color:var(--text3);font-style:italic;">zavřeno</span>'
-      : '<span style="color:var(--text2);">'+refRaw+'</span>';
+    var customWrap = '<span id="gsvw-'+si+'" style="display:'+(mode==='custom'?'inline-flex':'none')+';align-items:center;gap:3px;">'
+      +'<input type="time" id="gsvf-'+si+'" value="'+((mode==='custom'&&saved.from)?saved.from:'')+'" '
+      +'oninput="saveBulkSvCustom(\''+key+'\','+si+')" '
+      +'style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);width:78px;">'
+      +'<span style="color:var(--text3);font-size:11px;">\u2013</span>'
+      +'<input type="time" id="gsvt-'+si+'" value="'+((mode==='custom'&&saved.to)?saved.to:'')+'" '
+      +'oninput="saveBulkSvCustom(\''+key+'\','+si+')" '
+      +'style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);width:78px;">'
+      +'</span>';
 
-    return '<tr>'+
-      '<td style="font-weight:600;font-size:13px;">'+s.name+'</td>'+
-      '<td style="font-size:12px;color:var(--text2);">'+refVal+'</td>'+
-      '<td>'+specVal+'</td>'+
-      '<td style="text-align:center;">'+
-        (isSet
-          ? '<span style="background:var(--open-bg);color:var(--open);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;">✓ zadáno</span>'
-          : '<span style="background:var(--surface2);color:var(--text3);padding:2px 8px;border-radius:99px;font-size:11px;">—</span>')+
-      '</td>'+
-      '<td style="text-align:right;">'+
-        '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="openStoreByIdx('+stores.indexOf(s)+',true);setTimeout(function(){switchDTab(\'svatky\',document.querySelector(\'.dtab:nth-child(4)\'));},200)">Upravit →</button>'+
-      '</td>'+
-    '</tr>';
+    var preview = !effH ? '<span style="color:var(--text3);font-size:11px;">\u2014</span>'
+      : effH === 'ZAVŘENO' ? '<span style="color:var(--closed);font-weight:600;font-size:11px;">ZAVŘENO</span>'
+      : '<span style="color:var(--open);font-weight:600;font-size:11px;">'+effH+'</span>';
+
+    return '<tr>'
+      +'<td style="font-weight:600;font-size:12px;white-space:nowrap;padding:8px 12px;">'+s.name+'</td>'
+      +'<td style="font-size:11px;color:var(--text2);padding:8px 12px;">'+stdH+'</td>'
+      +'<td style="padding:6px 12px;"><div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">'
+        +modeBtn('standard','Standardní','on-standard')
+        +modeBtn('sobota','Jak So ('+satH+')','on-sobota')
+        +modeBtn('closed','Zavřeno','on-closed')
+        +modeBtn('custom','Speciální:','on-custom')
+        +customWrap
+      +'</div></td>'
+      +'<td style="text-align:right;padding:8px 12px;font-size:11px;" id="gsv-prev-'+si+'">'+preview+'</td>'
+      +'<td style="padding:8px 8px 8px 0;">'
+        +'<button onclick="printPlakatSvatek('+si+',\''+key+'\')" title="Tisknout pl\xe1k\xe1t" '
+        +'style="font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface2);cursor:pointer;">\ud83d\udda8</button>'
+      +'</td>'
+    +'</tr>';
   }).join('');
 
-  var setCount = stores.filter(function(s){ var d=(s.saints||{})[key]; return !!(d&&(d.from||d.closed)); }).length;
-
   wrap.innerHTML =
-    '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">'+
-      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 18px;text-align:center;">'+
-        '<div style="font-family:var(--display);font-size:28px;color:var(--brand);">'+setCount+'</div>'+
-        '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Zadáno</div>'+
-      '</div>'+
-      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 18px;text-align:center;">'+
-        '<div style="font-family:var(--display);font-size:28px;color:var(--text3);">'+(stores.length-setCount)+'</div>'+
-        '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Nezadáno</div>'+
-      '</div>'+
-      '<div style="background:var(--soon-bg);border:1px solid var(--soon);border-radius:var(--r);padding:10px 18px;font-size:12px;color:var(--soon);display:flex;align-items:center;">'+
-        '⚠ Svátek padá na <strong style="margin-left:4px;">'+sv.den+'</strong>'+
-        (dayIdx !== undefined ? ' — prodejny mají v tento den běžně tyto hodiny' : '')+
-      '</div>'+
-    '</div>'+
-    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;">'+
-    '<table style="width:100%;border-collapse:collapse;font-size:13px;">'+
-      '<thead><tr style="background:var(--surface2);">'+
-        '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Prodejna</th>'+
-        '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Běžně '+sv.den+'</th>'+
-        '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Speciální hodiny svátku</th>'+
-        '<th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Stav</th>'+
-        '<th></th>'+
-      '</tr></thead>'+
-      '<tbody>'+rows+'</tbody>'+
-    '</table></div>';
+    '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">'
+      +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 16px;text-align:center;">'
+        +'<div style="font-family:var(--display);font-size:24px;color:var(--brand);">'+setCount+'</div>'
+        +'<div style="font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Zadáno</div>'
+      +'</div>'
+      +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 16px;text-align:center;">'
+        +'<div style="font-family:var(--display);font-size:24px;color:var(--text3);">'+(stores.length-setCount)+'</div>'
+        +'<div style="font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Neur\u010deno</div>'
+      +'</div>'
+      +'<div style="background:var(--soon-bg);border:1px solid var(--soon);border-radius:var(--r);padding:8px 14px;font-size:12px;color:var(--soon);">'
+        +'\u26a0 Sv\xe1tek pad\xe1 na <strong>'+sv.den+'</strong>'
+      +'</div>'
+    +'</div>'
+    +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 16px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+      +'<span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">Nastavit v\u0161e jako:</span>'
+      +'<button class="sv-mode-btn on-standard" onclick="setBulkSvMode(\''+key+'\',\'standard\')" style="font-size:11px;">Standardn\xed</button>'
+      +'<button class="sv-mode-btn on-sobota"   onclick="setBulkSvMode(\''+key+'\',\'sobota\')"   style="font-size:11px;">Jako sobotu</button>'
+      +'<button class="sv-mode-btn on-closed"   onclick="setBulkSvMode(\''+key+'\',\'closed\')"   style="font-size:11px;">Zav\u0159eno</button>'
+      +'<button class="sv-mode-btn" onclick="clearBulkSvMode(\''+key+'\')" style="font-size:11px;">\u2715 V\u0161e neur\u010deno</button>'
+    +'</div>'
+    +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+      +'<thead><tr style="background:var(--surface2);">'
+        +'<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Prodejna</th>'
+        +'<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">B\u011b\u017en\u011b '+sv.den+'</th>'
+        +'<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">Nastavit</th>'
+        +'<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">V\xfdsledek</th>'
+        +'<th></th>'
+      +'</tr></thead>'
+      +'<tbody>'+rows+'</tbody>'
+    +'</table></div>';
 }
+
+function setBulkSvMode(key, mode) {
+  stores.forEach(function(s) {
+    if (!s.saints) s.saints = {};
+    s.saints[key] = {mode: mode};
+  });
+  markDirty();
+  renderSvatkyView();
+}
+
+function clearBulkSvMode(key) {
+  if (!confirm('Vymazat nastaven\xed pro v\u0161echny prodejny?')) return;
+  stores.forEach(function(s) { if (s.saints) s.saints[key] = {}; });
+  markDirty();
+  renderSvatkyView();
+}
+
+function setBulkSvModeOne(key, mode, si) {
+  var s = stores[si]; if (!s) return;
+  if (!s.saints) s.saints = {};
+  var current = getSvMode(s.saints[key] || {});
+  s.saints[key] = current === mode ? {} : {mode: mode};
+  markDirty();
+  renderSvatkyView();
+}
+
+function saveBulkSvCustom(key, si) {
+  var s = stores[si]; if (!s) return;
+  if (!s.saints) s.saints = {};
+  var f = document.getElementById('gsvf-'+si);
+  var t = document.getElementById('gsvt-'+si);
+  s.saints[key] = {mode:'custom', from: f?f.value:'', to: t?t.value:''};
+  markDirty();
+  var prev = document.getElementById('gsv-prev-'+si);
+  var effH = getEffectiveHoursForSaint(s, key);
+  if (prev) prev.innerHTML = effH && effH !== 'ZAVŘENO'
+    ? '<span style="color:var(--open);font-weight:600;font-size:11px;">'+effH+'</span>'
+    : '<span style="color:var(--text3);font-size:11px;">\u2014</span>';
+}
+
 
 function copySvatkyAll() {
   var sel = document.getElementById('sv-global-sel');
@@ -3275,9 +3516,8 @@ function copySvatkyAll() {
   if (!sv) return;
   var lines = [sv.date+' '+sv.den+' — '+sv.name, ''];
   stores.forEach(function(s){
-    var saved = (s.saints||{})[key] || {};
-    var val = saved.closed ? 'ZAVŘENO' : (saved.from&&saved.to ? saved.from+' – '+saved.to : '(nezadáno)');
-    lines.push(s.name+': '+val);
+    var eff = getEffectiveHoursForSaint(s, key);
+    lines.push(s.name+': '+(eff||'(neurčeno)'));
   });
   navigator.clipboard.writeText(lines.join('\n'));
   var btn = event.target; btn.textContent = 'Zkopírováno ✓';
