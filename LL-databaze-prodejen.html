@@ -1487,11 +1487,10 @@ function loadData() {
           if(!s.firmy)    s.firmy    = def.firmy    || '';
           if(!s.web)      s.web      = def.web      || '';
           if(!s.zmrzHours) s.zmrzHours = def.zmrzHours || '';
-          // Přepsat hodiny vždy z DEFAULT_STORES (aktualizace z Excelu)
-          if(def.hours)   s.hours    = def.hours;
-          // Souřadnice — doplnit vždy (přidány dodatečně)
+          // Souřadnice a foto — doplnit vždy (statická data)
           if(!s.lat)      s.lat      = def.lat;
           if(!s.lng)      s.lng      = def.lng;
+          if(!s.photo)    s.photo    = def.photo || '';
         }
       });
       // Pokud ještě nemáme timestamp (starší verze), nastav ho teď
@@ -1571,7 +1570,6 @@ function loadFromSheets() {
           if(!s.photo)  s.photo  = def.photo  || '';
           if(!s.lat)    s.lat    = def.lat;
           if(!s.lng)    s.lng    = def.lng;
-          if(def.hours) s.hours  = def.hours; // hodiny vždy z DEFAULT (Excel)
         }
 
         // 2) Doplň z localStorage — uživatelem zadané hodnoty, které Sheets nemá
@@ -2824,8 +2822,7 @@ function forceLoadFromSheets() {
         if (!s.photo) s.photo = def.photo || '';
         if (!s.lat) s.lat = def.lat;
         if (!s.lng) s.lng = def.lng;
-        if (def.hours) s.hours = def.hours;
-      }
+              }
     });
     stores = sd;
     localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
