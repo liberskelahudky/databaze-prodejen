@@ -1346,7 +1346,7 @@ var isDirty = false;
 var currentView = 'live';
 
 // ─── SHEETS BACKEND ──────────────────────────────────────────────
-var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbySwCFRAAcf1AhuB3jMIGW5CO2FXx0u0I0SjKxjKFqgwZ-TjvdZTq9pmqZaq8NkG8qQ/exec';
+var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzTedKZGnvViS82wsQ_eBf_u73OR9l-j_NmVShy10od5Vu8HoMouMQW9c7cuJDCxOI5/exec';
 var SHEETS_KEY = 'LL2026';
 var USE_SHEETS = true;
 
@@ -1495,47 +1495,22 @@ function saveData() {
 
   if (USE_SHEETS && SHEETS_URL) {
     setBadge('ukládám do Sheets…', true);
-    var cbName = 'll_save_' + ts;
-    var script = document.createElement('script');
-    var done = false;
-    var payload = {stores: stores, savedAt: ts};
-
-    var timer = setTimeout(function() {
-      if (done) return;
-      done = true;
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      // Fallback: no-cors fetch
-      var url = SHEETS_URL + '?action=save&key=' + SHEETS_KEY +
-                '&data=' + encodeURIComponent(JSON.stringify(payload));
-      fetch(url, { mode: 'no-cors' })
-        .then(function() { setBadge('odesláno (no-cors)', false); })
-        .catch(function() { setBadge('uloženo lokálně', true); });
-    }, 8000);
-
-    window[cbName] = function(resp) {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      setBadge(resp && resp.ok ? 'uloženo v Sheets ✓' : ('chyba: ' + (resp && resp.error)), !(resp && resp.ok));
-    };
-
-    script.src = SHEETS_URL + '?action=save&key=' + SHEETS_KEY + '&callback=' + cbName + '&data=' + encodeURIComponent(JSON.stringify(payload));
-    script.onerror = function() {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      delete window[cbName];
-      // Fallback: no-cors
-      var url = SHEETS_URL + '?action=save&key=' + SHEETS_KEY +
-                '&data=' + encodeURIComponent(JSON.stringify(payload));
-      fetch(url, { mode: 'no-cors' })
-        .then(function() { setBadge('odesláno (no-cors)', false); })
-        .catch(function() { setBadge('uloženo lokálně', true); });
-    };
-    document.head.appendChild(script);
+    var payload = {key: SHEETS_KEY, data: {stores: stores, savedAt: ts}};
+    fetch(SHEETS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp && resp.ok) {
+        setBadge('uloženo v Sheets ✓', false);
+      } else {
+        setBadge('chyba Sheets: ' + (resp && resp.error || '?'), true);
+      }
+    })
+    .catch(function(err) {
+      setBadge('chyba spojení: ' + err.message, true);
+    });
   } else {
     setBadge('uloženo', false);
   }
