@@ -650,8 +650,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
     <button class="nav-tab" onclick="showView('mapa')">🗺 Mapa</button>
   </div>
   <div class="nav-right">
-    <button class="nav-tab" onclick="debugSheets()" style="color:rgba(255,255,255,0.7);">🔧 Test Sheets</button>
-    <button class="nav-tab" onclick="printHoursSheet()" style="color:rgba(255,255,255,0.7);">↓ PDF hodin</button>
+    <button class="nav-tab" onclick="forceLoadFromSheets()" style="color:white;background:rgba(255,255,255,.2);font-weight:700;">&#8635; Načíst ze Sheets</button>
+    <button class="nav-tab" onclick="forceSaveToSheets()" style="color:rgba(255,255,255,.85);background:rgba(255,255,255,.12);">&#8593; Uložit</button>
+    <button class="nav-tab" onclick="debugSheets()" style="color:rgba(255,255,255,0.5);">🔧 Test</button>
     <div class="clock-display" id="clock-display">--:--:--</div>
     <div class="save-badge" id="save-badge">uloženo</div>
   </div>
@@ -2489,7 +2490,7 @@ function printPlakatSvatek(storeIdx, dateKey) {
   var win = window.open('','_blank');
   if (!win) { alert('Povol\u010d pop-up okna v prohl\xed\u017ee\u010di'); return; }
 
-  var DAYS_U = ['POND\u011aL\xcd','\xda\u00daTER\xdd','ST\u0158EDA','\u010cTVRTEK','P\xc1TEK','SOBOTA','NED\u011aLE'];
+  var DAYS_U = ['POND\u011aL\xcd','\xdaTER\xdd','ST\u0158EDA','\u010cTVRTEK','P\xc1TEK','SOBOTA','NED\u011aLE'];
   var rows = DAYS_U.map(function(d,i){
     var raw = hours[i] || '';
     var isCl = !raw || raw === 'ZAVŘENO';
@@ -2524,7 +2525,7 @@ function printPlakatSvatek(storeIdx, dateKey) {
     +'</head><body><div class="poster">'
     +(logoSrc?'<div class="p-logo"><img src="'+logoSrc+'"></div>':'')
     +'<div class="p-svatek">'+sv.date+' '+sv.den.toUpperCase()+' \u2014 '+sv.name.toUpperCase()+'</div>'
-    +'<div class="p-heading">OT<br>EV\xcdR<br>AC\xcd<br>DOBA</div>'
+    +'<div class="p-heading">OTEV\xcdRAC\xcd<br>DOBA</div>'
     +'<div>'+rows+'</div>'
     +'<hr class="p-divider">'
     +'<div class="p-footer">'
