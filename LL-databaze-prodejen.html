@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="cs">
 <head>
@@ -186,6 +187,15 @@ body {
   padding: 16px 22px; text-align: center;
   box-shadow: var(--sh-sm); min-width: 92px;
 }
+.sum-clickable {
+  border: none; cursor: pointer; font-family: var(--font);
+  transition: transform .15s, box-shadow .15s;
+}
+.sum-clickable:hover { transform: translateY(-2px); box-shadow: var(--sh); }
+.sum-clickable.sum-active {
+  box-shadow: 0 0 0 2.5px var(--brand), var(--sh-sm);
+  background: var(--brand-pale);
+}
 .sum-num { font-family: var(--display); font-size: 32px; line-height: 1; }
 .sum-lbl {
   font-size: 10px; font-weight: 600; letter-spacing: .07em;
@@ -335,21 +345,74 @@ body {
 }
 .field-input::placeholder { color: var(--text3); }
 .field-select { cursor: pointer; }
+/* ═══ TOGGLE CHECKBOXY ═══ */
 .field-check {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 14px; font-weight: 500; cursor: pointer; padding: 6px 0;
-  flex-direction: row;
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 500; cursor: pointer; padding: 0;
+  user-select: none;
 }
-.field-check input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand); cursor: pointer; border-radius: 5px; flex-shrink: 0; }
-/* Řada checkboxů vedle sebe */
+.field-check input[type=checkbox] { display: none; }
+.toggle-track {
+  position: relative; width: 38px; height: 22px; flex-shrink: 0;
+  background: var(--surface3); border-radius: 99px;
+  transition: background .18s;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.08);
+}
+.field-check input[type=checkbox]:checked + .toggle-track {
+  background: var(--brand);
+}
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: white; box-shadow: 0 1px 4px rgba(0,0,0,.22);
+  transition: transform .18s cubic-bezier(.4,0,.2,1);
+}
+.field-check input[type=checkbox]:checked ~ .toggle-track .toggle-thumb,
+.field-check input[type=checkbox]:checked + .toggle-track .toggle-thumb {
+  transform: translateX(16px);
+}
+.toggle-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+
+/* Mřížka toggles — 3 sloupce */
 .check-row {
-  display: flex; flex-wrap: wrap; gap: 4px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 .check-row .field-check {
-  width: 50%; padding: 7px 0;
+  background: var(--surface2);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  gap: 10px;
+  transition: background .12s;
+}
+.check-row .field-check:hover { background: var(--brand-pale2); }
+.check-row .field-check input[type=checkbox]:checked ~ .toggle-label,
+.check-row .field-check input[type=checkbox]:checked + .toggle-track + .toggle-label {
+  color: var(--brand); font-weight: 600;
 }
 
-/* ═══ HOURS DISPLAY ═══ */
+/* ═══ ZMRZ TYPE SEGMENT ═══ */
+.zmrz-type-wrap {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px;
+}
+.zmrz-type-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 12px 8px; border-radius: var(--r2);
+  border: 2px solid var(--border);
+  background: var(--surface2); cursor: pointer;
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  color: var(--text3); text-align: center; line-height: 1.3;
+  transition: all .15s;
+}
+.zmrz-type-btn:hover { border-color: var(--brand-l); color: var(--brand); background: var(--brand-pale); }
+.zmrz-type-btn.active {
+  border-color: var(--brand); background: var(--brand-pale2); color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand-l);
+}
+.zmrz-type-icon { font-size: 22px; line-height: 1; }
+
+
 .hours-display { display: grid; grid-template-columns: repeat(7,1fr); gap: 8px; }
 .hd-cell {
   background: var(--surface2); border-radius: var(--r);
@@ -533,6 +596,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 @media (max-width: 700px) {
   .shell { grid-template-rows: 50px 1fr; overflow-x: hidden; }
+  #author-bar { display: none !important; }
+  #author-hint { display: none; }
   .body  { grid-template-columns: 1fr; overflow-x: hidden; }
   .nav-tabs  { display: none; }
   .nav-brand { font-size: 13px; margin-right: 0; white-space: nowrap; }
@@ -579,7 +644,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .mob-more-item.active { background: var(--brand-pale2); color: var(--brand); }
 
   .sidebar {
-    position: fixed; left: 0; right: 0; bottom: 58px; z-index: 150;
+    position: fixed; left: 0; right: 0; bottom: 58px; z-index: 150; top: 50px;
     height: 75vh; transform: translateY(100%);
     transition: transform .28s cubic-bezier(.4,0,.2,1);
     border-radius: 18px 18px 0 0;
@@ -641,8 +706,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
   <div class="nav-brand">LL / Databáze prodejen</div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showView('live')">Živý přehled</button>
-    <button class="nav-tab" onclick="showView('wolt')">Wolt hromadně</button>
-    <button class="nav-tab" onclick="showView('tvradia')">TV / Rádio hromadně</button>
+    <button class="nav-tab" onclick="showView('wolt')">Wolt</button>
+    <button class="nav-tab" onclick="showView('tvradia')">TV / Rádio</button>
     <button class="nav-tab" onclick="showView('store')">Detail prodejny</button>
     <button class="nav-tab" onclick="showView('plakat')">🖨 Plakát OD</button>
     <button class="nav-tab" onclick="showView('zmrzlina')">🍦 Zmrzliny</button>
@@ -656,6 +721,17 @@ html, body { max-width: 100%; overflow-x: hidden; }
     <div class="clock-display" id="clock-display">--:--:--</div>
     <div class="save-badge" id="save-badge">uloženo</div>
   </div>
+</div>
+
+<div id="author-bar" style="display:none;">
+  <select id="g-author" onchange="saveAuthor()">
+    <option value="">— vyber —</option>
+    <option value="Megy">Megy</option>
+    <option value="Kamila">Kamila</option>
+    <option value="Jitka">Jitka</option>
+    <option value="Richard">Richard</option>
+    <option value="David">David</option>
+  </select>
 </div>
 
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
@@ -675,7 +751,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
       <button class="sb-filter" data-f="wolt" onclick="toggleSbFilter('wolt',this)">Wolt</button>
       <button class="sb-filter" data-f="zmrzlina" onclick="toggleSbFilter('zmrzlina',this)">🍦 Zmrzlina</button>
       <button class="sb-filter" data-f="tv" onclick="toggleSbFilter('tv',this)">📺 TV</button>
-      <button class="sb-filter" data-f="okenko" onclick="toggleSbFilter('okenko',this)">Okénko</button>
+      <button class="sb-filter" data-f="bez-tv" onclick="toggleSbFilter('bez-tv',this)">📺 Bez TV</button>
+      <button class="sb-filter" data-f="okenko" onclick="toggleSbFilter('okenko',this)">🪟 Okénko</button>
+      <button class="sb-filter" data-f="kiosek" onclick="toggleSbFilter('kiosek',this)">🏪 Kiosek</button>
+      <button class="sb-filter" data-f="samo-lednice" onclick="toggleSbFilter('samo-lednice',this)">🧊 Sam. lednice</button>
       <button class="sb-filter" data-f="seating" onclick="toggleSbFilter('seating',this)">Sezení</button>
       <button class="sb-filter" data-f="vyroba" onclick="toggleSbFilter('vyroba',this)">Výroba</button>
       <button class="sb-filter" data-f="oc" onclick="toggleSbFilter('oc',this)">OC</button>
@@ -885,13 +964,28 @@ html, body { max-width: 100%; overflow-x: hidden; }
         </div>
 
         <div class="field-group">
-          <div class="field-group-title">Dostupnost</div>
+          <div class="field-group-title">Vybavení prodejny</div>
+          <div class="field-grid" style="margin-bottom:14px;">
+            <div class="field">
+              <label class="field-label">Počet pokladen</label>
+              <input type="number" class="field-input" id="f-pokladny" min="0" max="20" oninput="onFieldChange()" />
+            </div>
+            <div class="field">
+              <label class="field-label">Počet TV obrazovek</label>
+              <input type="number" class="field-input" id="f-lcd" min="0" max="20" oninput="onFieldChange()" />
+            </div>
+            <div class="field">
+              <label class="field-label">Parkování</label>
+              <input type="text" class="field-input" id="f-parking" placeholder="např. Zdarma před prodejnou, 2 h" oninput="onFieldChange()" />
+            </div>
+          </div>
           <div class="check-row">
-            <div class="field-check"><input type="checkbox" id="f-barrier" onchange="onFieldChange()" /><label for="f-barrier">Bezbariérový přístup</label></div>
-            <div class="field-check"><input type="checkbox" id="f-seating" onchange="onFieldChange()" /><label for="f-seating">Posezení</label></div>
-            <div class="field-check"><input type="checkbox" id="f-eshop" onchange="onFieldChange()" /><label for="f-eshop">Výdejna e-shopu</label></div>
-            <div class="field-check"><input type="checkbox" id="f-kiosek" onchange="onFieldChange()" /><label for="f-kiosek">Kiosek</label></div>
-            <div class="field-check"><input type="checkbox" id="f-vyroba" onchange="onFieldChange()" /><label for="f-vyroba">Výroba na prodejně</label></div>
+            <label class="field-check"><input type="checkbox" id="f-barrier" onchange="onFieldChange()" /><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-label">Bezbariérový přístup</span></label>
+            <label class="field-check"><input type="checkbox" id="f-seating" onchange="onFieldChange()" /><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-label">Posezení</span></label>
+            <label class="field-check"><input type="checkbox" id="f-samo-lednice" onchange="onFieldChange()" /><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-label">Samoobslužná lednice</span></label>
+            <label class="field-check"><input type="checkbox" id="f-kiosek" onchange="onFieldChange()" /><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-label">Kiosek</span></label>
+            <label class="field-check"><input type="checkbox" id="f-eshop" onchange="onFieldChange()" /><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-label">Výdejna e-shopu</span></label>
+            <label class="field-check"><input type="checkbox" id="f-vyroba" onchange="onFieldChange()" /><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-label">Výroba na prodejně</span></label>
           </div>
         </div>
       </div>
@@ -918,34 +1012,53 @@ html, body { max-width: 100%; overflow-x: hidden; }
         <div id="hours-display-wrap"></div>
       </div>
 
-      <!-- TAB: VYBAVENÍ -->
       <!-- TAB: ZMRZLINA -->
       <div class="tab-panel" id="tp-zmrzlina">
         <div class="field-group">
-          <div class="field-group-title">Typ výdeje zmrzliny</div>
-          <div class="check-row" style="margin-bottom:16px;">
-            <div class="field-check"><input type="checkbox" id="f-zmrz-vydej" onchange="onFieldChange()" /><label for="f-zmrz-vydej">Vydává zmrzlinu (stroj / kopečky)</label></div>
-            <div class="field-check"><input type="checkbox" id="f-okenko" onchange="onFieldChange()" /><label for="f-okenko">Má zmrzlinové okénko / bar</label></div>
+          <div class="field-group-title">Typ zmrzliny na prodejně</div>
+          <div class="zmrz-type-wrap">
+            <button class="zmrz-type-btn" data-zmrz="okenko" onclick="setZmrzType('okenko')">
+              <span class="zmrz-type-icon">🪟</span>Zmrzlinové okénko / bar
+            </button>
+            <button class="zmrz-type-btn" data-zmrz="prodejna" onclick="setZmrzType('prodejna')">
+              <span class="zmrz-type-icon">🍦</span>Na prodejně (bez okénka)
+            </button>
+            <button class="zmrz-type-btn" data-zmrz="mrazak" onclick="setZmrzType('mrazak')">
+              <span class="zmrz-type-icon">🧊</span>Mrazák se zmrzlinami
+            </button>
+            <button class="zmrz-type-btn" data-zmrz="zadna" onclick="setZmrzType('zadna')">
+              <span class="zmrz-type-icon">✕</span>Žádná zmrzlina
+            </button>
           </div>
-          <div class="field-grid">
-            <div class="field">
-              <label class="field-label">Počet pák / strojů</label>
-              <input type="number" class="field-input" id="f-zmrzlina" min="0" oninput="onFieldChange()" />
-            </div>
-            <div class="field">
-              <label class="field-label">Otevírací doba zmrzliny</label>
-              <input type="text" class="field-input" id="f-zmrz-hours" placeholder="např. Po-Pá 10-18, So-Ne 10-17" oninput="onFieldChange()" />
+          <div id="zmrz-detail-wrap">
+            <div class="field-grid">
+              <div class="field">
+                <label class="field-label">Počet pák / strojů</label>
+                <input type="number" class="field-input" id="f-zmrzlina" min="0" oninput="onFieldChange()" />
+              </div>
+              <div class="field">
+                <label class="field-label">Otevírací doba zmrzliny</label>
+                <input type="text" class="field-input" id="f-zmrz-hours" placeholder="např. Po-Pá 10-18, So-Ne 10-17" oninput="onFieldChange()" />
+              </div>
             </div>
           </div>
         </div>
         <div class="field-group">
           <div class="field-group-title">Fotka okénka / výdeje</div>
+          <div class="field" style="margin-bottom:8px;">
+            <label class="field-label">Nahrát foto přímo</label>
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--brand);color:white;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;">
+              📷 Vybrat foto
+              <input type="file" accept="image/*" capture="environment" id="f-zmrz-upload" style="display:none;" onchange="uploadZmrzFoto(this)" />
+            </label>
+          </div>
           <div class="field">
-            <label class="field-label">URL fotky</label>
+            <label class="field-label">nebo URL fotky</label>
             <input type="url" class="field-input" id="f-zmrz-foto" placeholder="https://…" oninput="onFieldChange();previewZmrzFoto()" />
           </div>
-          <div id="zmrz-foto-preview" style="margin-top:10px;display:none;">
+          <div id="zmrz-foto-preview" style="margin-top:10px;display:none;position:relative;">
             <img id="zmrz-foto-img" src="" alt="náhled" style="max-width:340px;max-height:220px;border-radius:var(--r2);object-fit:cover;box-shadow:var(--sh-sm);" />
+            <button onclick="clearZmrzFoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:white;border:none;border-radius:99px;width:24px;height:24px;font-size:14px;cursor:pointer;">×</button>
           </div>
         </div>
         <div class="field-group">
@@ -1257,6 +1370,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
         <label style="font-size:12px;color:var(--text2);">Svátek:</label>
         <select id="sv-global-sel" onchange="renderSvatkyView()" style="padding:7px 10px;font-size:13px;font-family:var(--font);border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;"></select>
         <button class="btn" onclick="copySvatkyAll()">Kopírovat přehled</button>
+        <button class="btn" onclick="showSvatekChecklist()" style="background:#0369a1;color:white;">✓ Checklist kanálů</button>
         <button class="btn" onclick="printPlakatSvatekAll()" style="background:#6B3012;color:white;">🖨 Tisknout plakáty</button>
       </div>
     </div>
@@ -1274,6 +1388,21 @@ html, body { max-width: 100%; overflow-x: hidden; }
       <div style="margin-top:5px;padding-top:5px;border-top:1px solid #eee;"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#6B3012;color:white;font-size:8px;font-weight:700;text-align:center;line-height:14px;margin-right:5px;">R</span>Richard</div>
       <div><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#0369a1;color:white;font-size:8px;font-weight:700;text-align:center;line-height:14px;margin-right:5px;">D</span>David</div>
     </div>
+  </div>
+
+  <div id="sv-checklist-panel" style="display:none;" class="wolt-view">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div class="view-title" style="font-size:20px;">Checklist kanálů</div>
+        <div class="view-sub" id="sv-cl-subtitle"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="resetSvatekChecklist()">Vymazat</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('sv-checklist-panel').style.display='none'">Zavřít</button>
+      </div>
+    </div>
+    <div id="sv-cl-stats" style="background:var(--surface2);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:13px;"></div>
+    <div id="sv-cl-items" style="background:var(--surface);border-radius:var(--r2);border:1px solid var(--border);overflow:hidden;"></div>
   </div>
 
 </div><!-- /main-area -->
@@ -1419,7 +1548,7 @@ function emptyStore(id, name, type) {
     obchZast: 'David Fendrych',
     wolt: '', gmaps: '', drive: '',
     landlord: '', landlordTel: '', leaseEnd: '', area: '',
-    mhd: '', parking: '', barrier: false, seating: false, eshop: false, kiosek: false, vyroba: false,
+    mhd: '', parking: '', barrier: false, seating: false, eshop: false, kiosek: false, vyroba: false, samoLednice: false, pokladny: 0,
     hours: ['','','','','','',''],
     zmrzlina: 0, nfc: 0, lcd: 0, dvere: 0,
     kavovar: '', lednice: 0, vahy: 0, pos: '',
@@ -1579,10 +1708,10 @@ function loadFromSheets() {
       // Všechna pole, která Sheets nemusí mít (nová nebo uložená pouze lokálně)
       var MERGE_FIELDS = [
         'wolt','gmaps','firmy','web','drive','photo',
-        'zmrzHours','zmrzVydej','zmrzFoto','zmrzNote',
+        'zmrzHours','zmrzVydej','zmrzFoto','zmrzNote','zmrzType',
         'zmrzlina','nfc','lcd','dvere','kavovar','lednice','vahy','pos',
-        'okenko','barrier','seating','eshop','kiosek','vyroba',
-        'landlord','landlordTel','leaseEnd','area','mhd','parking',
+        'okenko','barrier','seating','eshop','kiosek','vyroba','samoLednice',
+        'landlord','landlordTel','leaseEnd','area','mhd','parking','pokladny',
         'notes','saints','exceptions','changelog',
         'lat','lng'
       ];
@@ -1677,6 +1806,18 @@ function setBadge(text, dirty) {
 
 // Autosave every 30s
 setInterval(function(){ if(isDirty) saveData(); }, 30000);
+
+// Debounced autosave — uloží 4s po poslední změně v detailu prodejny
+var _autosaveTimer = null;
+function scheduleAutosave() {
+  if (_autosaveTimer) clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(function() {
+    if (isDirty && currentStoreIdx >= 0) {
+      saveCurrentStore();
+      setBadge('automaticky uloženo ✓', false);
+    }
+  }, 4000);
+}
 
 
 
@@ -1909,12 +2050,39 @@ function renderLiveGrid() {
   }).join('');
 
   document.getElementById('live-grid').innerHTML = html;
-  document.getElementById('summary-bar').innerHTML =
-    '<div class="sum-card"><div class="sum-num open">'+counts.open+'</div><div class="sum-lbl">Otevřeno</div></div>'+
-    '<div class="sum-card"><div class="sum-num soon">'+counts.soon+'</div><div class="sum-lbl">Brzy zavírá/otvírá</div></div>'+
-    '<div class="sum-card"><div class="sum-num closed">'+counts.closed+'</div><div class="sum-lbl">Zavřeno</div></div>'+
-    '<div class="sum-card"><div class="sum-num" style="color:var(--text2)">'+stores.length+'</div><div class="sum-lbl">Celkem prodejen</div></div>'+
-    '<div class="sum-card"><div class="sum-num" style="color:var(--wolt)">'+stores.filter(function(s){return s.wolt==='Ano';}).length+'</div><div class="sum-lbl">Na Woltu</div></div>';
+
+  // Klikací summary karty — filtrují sidebar
+  var bar = document.getElementById('summary-bar');
+  bar.innerHTML =
+    '<button class="sum-card sum-clickable" id="sc-open" onclick="toggleStatusFilter(\'open\',this)" title="Filtrovat otevřené prodejny">'
+      +'<div class="sum-num open">'+counts.open+'</div>'
+      +'<div class="sum-lbl">Otevřeno</div>'
+    +'</button>'
+    +'<button class="sum-card sum-clickable" id="sc-soon" onclick="toggleStatusFilter(\'soon\',this)" title="Filtrovat prodejny, které brzy mění stav">'
+      +'<div class="sum-num soon">'+counts.soon+'</div>'
+      +'<div class="sum-lbl">Brzy zavírá/otvírá</div>'
+    +'</button>'
+    +'<button class="sum-card sum-clickable" id="sc-closed" onclick="toggleStatusFilter(\'closed\',this)" title="Filtrovat zavřené prodejny">'
+      +'<div class="sum-num closed">'+counts.closed+'</div>'
+      +'<div class="sum-lbl">Zavřeno</div>'
+    +'</button>'
+    +'<div class="sum-card">'
+      +'<div class="sum-num" style="color:var(--text2)">'+stores.length+'</div>'
+      +'<div class="sum-lbl">Celkem prodejen</div>'
+    +'</div>'
+    +'<div class="sum-card">'
+      +'<div class="sum-num" style="color:var(--wolt)">'+stores.filter(function(s){return s.wolt==='Ano';}).length+'</div>'
+      +'<div class="sum-lbl">Na Woltu</div>'
+    +'</div>';
+
+  // Obnov aktivní stav klikacích karet (po re-renderu)
+  ['open','soon','closed'].forEach(function(st) {
+    var card = document.getElementById('sc-'+st);
+    if (card && sbFilters['status_'+st]) card.classList.add('sum-active');
+  });
+
+  // Aplikuj status filtr na karty (pokud je aktivní)
+  renderLiveGridFiltered();
 }
 
 // ─── WOLT GRID ───────────────────────────────────────────────────
@@ -1940,19 +2108,22 @@ function renderWoltGrid() {
 
 // ─── SIDEBAR ─────────────────────────────────────────────────────
 function matchesFilter(s, f) {
-  if (f==='open')       return getStoreStatus(s).status==='open';
-  if (f==='wolt')       return s.wolt==='Ano';
-  if (f==='missing')    return !s.addr||!s.tel||s.hours.every(function(h){return !h;});
-  if (f==='zmrzlina')   return s.zmrzlina>0;
-  if (f==='tv')         return (s.lcd||0)>0;
-  if (f==='okenko')     return s.okenko;
-  if (f==='seating')    return s.seating;
-  if (f==='vyroba')     return s.vyroba;
-  if (f==='oc')         return s.type==='Obchodní centrum';
-  if (f==='poliklinika')return s.type==='Poliklinika';
-  if (f==='dopravni')   return s.type==='Dopravní uzel';
-  if (f==='mimoprazska')return s.type==='Mimopražská';
-  if (f==='centrum')    return s.type==='Centrum';
+  if (f==='open')         return getStoreStatus(s).status==='open';
+  if (f==='wolt')         return s.wolt==='Ano';
+  if (f==='missing')      return !s.addr||!s.tel||s.hours.every(function(h){return !h;});
+  if (f==='zmrzlina')     return s.zmrzType==='okenko'||s.zmrzType==='prodejna'||s.zmrzType==='mrazak'||(s.zmrzlina>0);
+  if (f==='tv')           return (s.lcd||0)>0;
+  if (f==='bez-tv')       return (s.lcd||0)===0;
+  if (f==='okenko')       return s.zmrzType==='okenko'||s.okenko;
+  if (f==='kiosek')       return !!s.kiosek;
+  if (f==='samo-lednice') return !!s.samoLednice;
+  if (f==='seating')      return s.seating;
+  if (f==='vyroba')       return s.vyroba;
+  if (f==='oc')           return s.type==='Obchodní centrum';
+  if (f==='poliklinika')  return s.type==='Poliklinika';
+  if (f==='dopravni')     return s.type==='Dopravní uzel';
+  if (f==='mimoprazska')  return s.type==='Mimopražská';
+  if (f==='centrum')      return s.type==='Centrum';
   return true;
 }
 
@@ -1980,7 +2151,7 @@ function renderSidebar() {
     var chips = '';
     if (s.wolt==='Ano') chips += '<span class="chip chip-wolt">Wolt</span>';
     chips += '<span class="chip chip-type">'+s.type+'</span>';
-    if (s.zmrzlina>0) chips += '<span class="chip chip-zmrz">🍦</span>';
+    if ((s.zmrzType && s.zmrzType !== 'zadna') || s.zmrzlina>0) chips += '<span class="chip chip-zmrz">🍦</span>';
     if (miss) chips += '<span class="chip chip-miss">!</span>';
     var mgr2 = s.obchZast || '';
     var mgrChip = '';
@@ -2007,10 +2178,51 @@ function toggleSbFilter(f, el) {
   el.classList.toggle('on', !!sbFilters[f]);
   renderSidebar();
 }
+
+function toggleStatusFilter(st, card) {
+  var key = 'status_'+st;
+  sbFilters[key] = !sbFilters[key];
+  card.classList.toggle('sum-active', !!sbFilters[key]);
+  renderLiveGridFiltered();
+}
+
+function renderLiveGridFiltered() {
+  var activeStatuses = ['open','soon','closed'].filter(function(st){
+    return sbFilters['status_'+st];
+  });
+
+  var allCards = document.querySelectorAll('#live-grid .live-card');
+  if (activeStatuses.length === 0) {
+    // žádný filtr — zobraz vše
+    allCards.forEach(function(card){ card.style.display = ''; });
+    document.getElementById('live-grid-empty') && (document.getElementById('live-grid-empty').style.display = 'none');
+    return;
+  }
+
+  var visible = 0;
+  allCards.forEach(function(card) {
+    var show = activeStatuses.some(function(st){ return card.classList.contains('is-'+st); });
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+
+  // Prázdný stav
+  var emptyEl = document.getElementById('live-grid-empty');
+  if (!emptyEl) {
+    emptyEl = document.createElement('div');
+    emptyEl.id = 'live-grid-empty';
+    emptyEl.style.cssText = 'grid-column:1/-1;text-align:center;padding:32px;color:var(--text3);font-size:14px;font-weight:500;';
+    emptyEl.textContent = 'Žádná prodejna neodpovídá filtru.';
+    document.getElementById('live-grid').appendChild(emptyEl);
+  }
+  emptyEl.style.display = visible === 0 ? 'block' : 'none';
+}
 function clearSbFilters() {
   sbFilters = {};
   document.querySelectorAll('.sb-filter').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.sum-clickable').forEach(function(c){ c.classList.remove('sum-active'); });
   renderSidebar();
+  renderLiveGridFiltered(); // zobraz všechny karty v live gridu
 }
 function toggleSbSort() {
   sbSort = sbSort==='num' ? 'alpha' : 'num';
@@ -2068,8 +2280,10 @@ function fillStoreDetail(s) {
   setV('f-landlord', s.landlord||''); setV('f-landlord-tel', s.landlordTel||'');
   setV('f-lease-end', s.leaseEnd||''); setV('f-area', s.area||'');
   setV('f-mhd', s.mhd||''); setV('f-parking', s.parking||'');
+  setV('f-pokladny', s.pokladny||0);
   setC('f-barrier', !!s.barrier); setC('f-seating', !!s.seating);
   setC('f-eshop', !!s.eshop); setC('f-kiosek', !!s.kiosek); setC('f-vyroba', !!s.vyroba);
+  setC('f-samo-lednice', !!s.samoLednice);
   // Vybavení
   setV('f-zmrzlina', s.zmrzlina||0); setV('f-nfc', s.nfc||0);
   setV('f-lcd', s.lcd||0); setV('f-dvere', s.dvere||0);
@@ -2078,6 +2292,9 @@ function fillStoreDetail(s) {
   setC('f-okenko', !!s.okenko); setV('f-zmrz-hours', s.zmrzHours||'');
   setC('f-zmrz-vydej', !!s.zmrzVydej);
   setV('f-zmrz-foto', s.zmrzFoto||''); setV('f-zmrz-note', s.zmrzNote||'');
+  // Zmrzlina type segment
+  var zt = s.zmrzType || (s.okenko ? 'okenko' : (s.zmrzVydej ? 'prodejna' : (s.zmrzlina>0 ? 'prodejna' : '')));
+  setZmrzType(zt, true);
   previewZmrzFoto();
   // Poznámky
   setV('f-notes', s.notes||'');
@@ -2106,6 +2323,7 @@ function getC(id) { var el=document.getElementById(id); return el?el.checked:fal
 
 function onFieldChange() {
   markDirty();
+  scheduleAutosave();
   var name = getV('f-name');
   document.getElementById('dt-name').textContent = name || '—';
   document.getElementById('dt-addr').textContent = getV('f-addr') || 'Adresa není zadána';
@@ -2152,6 +2370,7 @@ function saveCurrentStore() {
   if (currentStoreIdx < 0) return;
   var s = stores[currentStoreIdx];
   var prevName = s.name;
+  var prevSnap = {addr:s.addr,tel:s.tel,vedouci:s.vedouci,wolt:s.wolt,gmaps:s.gmaps,zmrzHours:s.zmrzHours,zmrzFoto:s.zmrzFoto,notes:s.notes,hours:(s.hours||[]).slice()};
 
   s.id = getV('f-id'); s.name = getV('f-name'); s.type = getV('f-type');
   s.obchZast = getV('f-obchzast');
@@ -2164,12 +2383,18 @@ function saveCurrentStore() {
   s.mhd = getV('f-mhd'); s.parking = getV('f-parking');
   s.barrier = getC('f-barrier'); s.seating = getC('f-seating');
   s.eshop = getC('f-eshop'); s.kiosek = getC('f-kiosek'); s.vyroba = getC('f-vyroba');
+  s.samoLednice = getC('f-samo-lednice');
+  s.pokladny = parseInt(getV('f-pokladny'))||0;
   s.zmrzlina = parseInt(getV('f-zmrzlina'))||0; s.nfc = parseInt(getV('f-nfc'))||0;
   s.lcd = parseInt(getV('f-lcd'))||0; s.dvere = parseInt(getV('f-dvere'))||0;
   s.kavovar = getV('f-kavovar'); s.lednice = parseInt(getV('f-lednice'))||0;
   s.vahy = parseInt(getV('f-vahy'))||0; s.pos = getV('f-pos');
   s.okenko = getC('f-okenko'); s.zmrzHours = getV('f-zmrz-hours');
   s.zmrzVydej = getC('f-zmrz-vydej');
+  s.zmrzType = document.getElementById('f-zmrz-type') ? document.getElementById('f-zmrz-type').value : '';
+  // Derive okenko/zmrzVydej from zmrzType for backward compat
+  s.okenko = s.zmrzType === 'okenko';
+  s.zmrzVydej = s.zmrzType === 'okenko' || s.zmrzType === 'prodejna';
   s.zmrzFoto = getV('f-zmrz-foto'); s.zmrzNote = getV('f-zmrz-note');
   s.notes = getV('f-notes');
 
@@ -2186,7 +2411,15 @@ function saveCurrentStore() {
   var now = new Date();
   var ts = now.toLocaleDateString('cs-CZ')+' '+now.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
   if (!s.changelog) s.changelog=[];
-  s.changelog.push(ts+' — uloženo');
+  var _author = getAuthor();
+  var _changes = [];
+  var _prev = prevSnap || {};
+  var _fmap = {addr:'Adresa',tel:'Telefon',vedouci:'Vedoucí',wolt:'Wolt',gmaps:'Google Maps',zmrzHours:'Hodiny zmrzliny',zmrzFoto:'Foto zmrzliny',notes:'Poznámky'};
+  Object.keys(_fmap).forEach(function(f){ if(String(_prev[f]||'')!==String(s[f]||'')) _changes.push(_fmap[f]); });
+  var _hoursOld = (_prev.hours||[]).join(','), _hoursNew = (s.hours||[]).join(',');
+  if (_hoursOld !== _hoursNew) _changes.push('Hodiny');
+  var _entry = ts + (_author ? ' ['+_author+']' : '') + (_changes.length ? ' · '+_changes.join(', ') : '');
+  s.changelog.push(_entry);
   if (s.changelog.length>20) s.changelog = s.changelog.slice(-20);
 
   saveData();
@@ -2508,56 +2741,72 @@ function printPlakatSvatek(storeIdx, dateKey) {
   var effH = getEffectiveHoursForSaint(s, dateKey);
   if (effH) hours[dayIdx] = effH;
 
-  var logoEl = document.getElementById('pk-logo');
-  var logoSrc = logoEl ? logoEl.src : '';
+  // Grab logo + ikony from page (same source as regular poster)
+  var logoSrc = (document.querySelector('img[src^="data:image/svg"]')||{}).src
+             || (document.getElementById('pk-logo')||{}).src || '';
+  var ikonySrc = (document.querySelector('img[src^="data:image/png"]')||{}).src || '';
+
   var win = window.open('','_blank');
   if (!win) { alert('Povol\u010d pop-up okna v prohl\xed\u017ee\u010di'); return; }
 
   var DAYS_U = ['POND\u011aL\xcd','\xdaTER\xdd','ST\u0158EDA','\u010cTVRTEK','P\xc1TEK','SOBOTA','NED\u011aLE'];
   var rows = DAYS_U.map(function(d,i){
     var raw = hours[i] || '';
-    var isCl = !raw || raw === 'ZAVŘENO';
-    var hl = i === dayIdx ? 'background:#fff3cd;border-radius:4px;padding:0 4px;' : '';
-    if (isCl) return '<div class="p-row" style="'+hl+'"><div class="p-day">'+d+'</div><div class="p-time zav">ZAV\u0158ENO</div></div>';
+    var isCl = !raw || raw === 'ZAVE\u0158ENO' || raw === 'ZAV\u0158ENO';
+    var hlStyle = i === dayIdx
+      ? 'background:#fff3cd;border-radius:3px;padding:0 3mm;margin:0 -3mm;'
+      : '';
+    if (isCl) return '<div class="p-row" style="'+hlStyle+'"><div class="p-day">'+d+'</div><div class="p-time zav">ZAV\u0158ENO</div></div>';
     var parts = raw.replace('\u2013','-').split('-');
     var fv = (parts[0]||'').trim().replace(':','.') || '\u2014';
     var tv = (parts[1]||'').trim().replace(':','.') || '\u2014';
-    return '<div class="p-row" style="'+hl+'"><div class="p-day">'+d+'</div><div class="p-time">'+fv+' \u2013 '+tv+'</div></div>';
+    return '<div class="p-row" style="'+hlStyle+'"><div class="p-day">'+d+'</div><div class="p-time">'+fv+' \u2013 '+tv+'</div></div>';
   }).join('');
 
-  var css = '*{box-sizing:border-box;margin:0;padding:0;}'
-    +'body{width:210mm;min-height:297mm;background:#fff9f4;display:flex;justify-content:center;}'
-    +'.poster{width:190mm;padding:14mm 12mm;display:flex;flex-direction:column;}'
-    +'.p-logo{text-align:center;margin-bottom:8mm;}'
-    +'.p-logo img{height:18mm;object-fit:contain;}'
-    +'.p-svatek{font-family:"Bebas Neue",sans-serif;font-size:9mm;color:#b45309;text-align:center;letter-spacing:.05em;margin-bottom:2mm;}'
-    +'.p-heading{font-family:"Bebas Neue",sans-serif;font-size:36mm;color:#6B3012;line-height:.85;text-align:center;margin-bottom:7mm;}'
-    +'.p-row{display:flex;justify-content:space-between;align-items:baseline;line-height:1.2;margin-bottom:1mm;}'
-    +'.p-day{font-family:"Bebas Neue",sans-serif;font-size:13mm;color:#6B3012;}'
-    +'.p-time{font-family:"Bebas Neue",sans-serif;font-size:13mm;color:#6B3012;white-space:nowrap;}'
-    +'.p-time.zav{font-size:9.5mm;color:#a0786a;}'
-    +'.p-divider{border:none;border-top:.5mm solid #6B3012;opacity:.5;margin:3mm 0;}'
-    +'.p-footer{display:flex;justify-content:space-between;gap:8mm;margin-top:3mm;}'
-    +'.p-footer-l,.p-footer-r{font-family:"Open Sans",sans-serif;font-size:2.3mm;color:#6B3012;line-height:1.6;}'
-    +'.p-footer-r{text-align:right;font-weight:700;}'
-    +'@media print{@page{size:A4 portrait;margin:0;}html,body{width:210mm;min-height:297mm;}}';
+  var css = [
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    'html,body{width:210mm;height:297mm;background:white;}',
+    '.poster{width:210mm;height:297mm;background:white;padding:8mm 16mm 5mm;display:flex;flex-direction:column;}',
+    '.p-logo{text-align:center;margin-bottom:3mm;}',
+    '.p-logo img{height:13mm;object-fit:contain;}',
+    '.p-svatek{font-family:"Bebas Neue",sans-serif;font-size:7mm;color:#b45309;text-align:center;letter-spacing:.06em;margin-bottom:1.5mm;}',
+    '.p-heading{font-family:"Bebas Neue",sans-serif;font-size:20mm;color:#6B3012;line-height:.88;text-align:center;margin-bottom:0;}',
+    '.p-hours{margin-top:auto;margin-bottom:auto;}',
+    '.p-row{display:flex;justify-content:space-between;align-items:baseline;line-height:1.2;}',
+    '.p-day{font-family:"Bebas Neue",sans-serif;font-size:14.5mm;color:#6B3012;}',
+    '.p-time{font-family:"Bebas Neue",sans-serif;font-size:14.5mm;color:#6B3012;white-space:nowrap;}',
+    '.p-time.zav{font-size:10mm;color:#a0786a;}',
+    '.p-divider{border:none;border-top:0.35mm solid rgba(107,48,18,.35);margin:0;}',
+    '.p-footer{display:flex;justify-content:space-between;gap:6mm;padding-top:2.5mm;border-top:0.35mm solid rgba(107,48,18,.25);margin-bottom:1.5mm;}',
+    '.p-footer-l,.p-footer-r{font-family:"Open Sans",sans-serif;font-size:2mm;color:#6B3012;line-height:1.5;}',
+    '.p-footer-r{text-align:right;font-weight:700;}',
+    '.p-icons{display:flex;justify-content:center;margin-bottom:1mm;}',
+    '.p-icons img{height:10mm;object-fit:contain;}',
+    '.p-legal{font-family:"Open Sans",sans-serif;font-size:1.7mm;color:#9a7a6a;text-align:center;line-height:1.4;margin-bottom:1.5mm;}',
+    '.p-sites{display:flex;justify-content:center;gap:3mm;font-family:"Open Sans",sans-serif;font-size:1.7mm;color:#6B3012;font-weight:600;}',
+    '@media print{@page{size:A4 portrait;margin:0;}html,body{width:210mm;height:297mm;}}'
+  ].join('');
 
-  win.document.write('<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8">'
+  win.document.write(
+    '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8">'
     +'<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">'
     +'<style>'+css+'</style>'
     +'</head><body><div class="poster">'
-    +(logoSrc?'<div class="p-logo"><img src="'+logoSrc+'"></div>':'')
+    +(logoSrc ? '<div class="p-logo"><img src="'+logoSrc+'"></div>' : '')
     +'<div class="p-svatek">'+sv.date+' '+sv.den.toUpperCase()+' \u2014 '+sv.name.toUpperCase()+'</div>'
     +'<div class="p-heading">OTEV\xcdRAC\xcd<br>DOBA</div>'
-    +'<div>'+rows+'</div>'
-    +'<hr class="p-divider">'
+    +'<div class="p-hours">'+rows+'</div>'
     +'<div class="p-footer">'
-      +'<div class="p-footer-l">PROVOZOVATEL: Libeřské lah\u016fdky a.s.<br>'+(s.addr||'')+'</div>'
+      +'<div class="p-footer-l">PROVOZOVATEL: Libeřsk\xe9 lah\u016fdky a.s.<br>Na Spojce 670, 252 50 Vestec<br>I\u010cO: 06679480 &nbsp; DI\u010c: CZ06679480</div>'
       +'<div class="p-footer-r">ODPOV\u011aDN\xdd VEDOUC\xcd:<br>'+(s.vedouci||'\u2014')+'<br>Tel.: '+(s.vedouciTel||s.tel||'\u2014')+'</div>'
     +'</div>'
+    +(ikonySrc ? '<div class="p-icons"><img src="'+ikonySrc+'"></div>' : '')
+    +'<div class="p-legal">Podle z\xe1kona o evidenci tr\u017eeb je prod\xe1vaj\xedc\xed povinen vystavit kupuj\xedc\xedmu \xfa\u010dtenku. Z\xe1rove\u0148 je povinen zaevidovat p\u0159ijatou tr\u017ebu u spr\xe1vce dan\u011b online; v p\u0159\xedpad\u011b technick\xe9ho v\xfdpadku pak nejpozd\u011bji do 48 hodin.</div>'
+    +'<div class="p-sites"><span>\u2295 WWW.LIBERSKELAHUDKY.CZ</span><span>\u2295 WWW.LAHUDKY.CZ</span><span>\u24d5 LAHUDKY.CZ</span><span>\u2295 LIBERSKELAHUDKY</span></div>'
     +'</div>'
-    +'<script>document.fonts.ready.then(function(){window.print();});<\/script>'
-    +'</body></html>');
+    +'<scr'+'ipt>document.fonts.ready.then(function(){window.print();});</scr'+'ipt>'
+    +'</body></html>'
+  );
   win.document.close();
 }
 
@@ -2765,12 +3014,6 @@ function confirmNewStore(){
   openStoreByIdx(stores.length-1,true);
 }
 
-function openPosterGenerator() {
-  var s = currentStoreIdx >= 0 ? stores[currentStoreIdx] : null;
-  // Uložíme aktuální prodejnu do sessionStorage pro generátor
-  if (s) sessionStorage.setItem('ll_poster_store', JSON.stringify(s));
-  window.open('generator-oteviraci-doby.html', '_blank');
-}
 
 /* ── MOBILNÍ MENU ── */
 function closeSidebarSheet() {
@@ -3058,7 +3301,9 @@ function renderExcActiveList() {
 }
 
 function renderZmrzlinaView() {
-  var zmStores = stores.filter(function(s){ return s.zmrzlina && parseInt(s.zmrzlina) > 0; });
+  var zmStores = stores.filter(function(s){
+    return (s.zmrzType && s.zmrzType !== 'zadna') || (s.zmrzlina && parseInt(s.zmrzlina) > 0);
+  });
   var total = zmStores.reduce(function(a,s){ return a+(parseInt(s.zmrzlina)||0); },0);
   document.getElementById('zmrz-sub').textContent =
     zmStores.length + ' prodejen · ' + total + ' kiosků celkem';
@@ -3459,7 +3704,9 @@ function openPosterGenerator() {
 }
 
 function printZmrzlinaList() {
-  var zmStores = stores.filter(function(s){ return s.zmrzlina && parseInt(s.zmrzlina) > 0; });
+  var zmStores = stores.filter(function(s){
+    return (s.zmrzType && s.zmrzType !== 'zadna') || (s.zmrzlina && parseInt(s.zmrzlina) > 0);
+  });
 
   var rows = zmStores.map(function(s) {
     var pocet = parseInt(s.zmrzlina) || 0;
@@ -3842,12 +4089,174 @@ function renderMapMarkers() {
 }
 
 
+
+// ─── ZMRZ TYPE SEGMENT ───────────────────────────────────────────
+function setZmrzType(val, silent) {
+  // Ensure hidden input exists
+  var inp = document.getElementById('f-zmrz-type');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.id = 'f-zmrz-type';
+    document.body.appendChild(inp);
+  }
+  inp.value = val || '';
+
+  // Update button states
+  var btns = document.querySelectorAll('.zmrz-type-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.toggle('active', btns[i].getAttribute('data-zmrz') === val);
+  }
+
+  // Show/hide detail fields (count + hours) only for non-zadna/non-mrazak
+  var wrap = document.getElementById('zmrz-detail-wrap');
+  if (wrap) {
+    wrap.style.display = (val === 'zadna' || val === '') ? 'none' : '';
+  }
+
+  if (!silent) onFieldChange();
+}
+
+// ─── AUTOR ────────────────────────────────────────────────────────
+function saveAuthor() {
+  var v = document.getElementById('g-author');
+  if (v) { localStorage.setItem('ll_author', v.value); }
+}
+function getAuthor() {
+  return localStorage.getItem('ll_author') || '';
+}
+function initAuthor() {
+  var saved = getAuthor();
+  var sel = document.getElementById('g-author');
+  if (sel && saved) sel.value = saved;
+}
+
+// ─── FOTO UPLOAD Z MOBILU ────────────────────────────────────────
+function uploadZmrzFoto(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  // Compress if > 500KB
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var maxW = 800;
+      var scale = img.width > maxW ? maxW / img.width : 1;
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+      var urlField = document.getElementById('f-zmrz-foto');
+      if (urlField) urlField.value = dataUrl;
+      previewZmrzFoto();
+      onFieldChange();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearZmrzFoto() {
+  var urlField = document.getElementById('f-zmrz-foto');
+  if (urlField) urlField.value = '';
+  previewZmrzFoto();
+  onFieldChange();
+}
+
+// ─── CHECKLIST SVÁTKU ─────────────────────────────────────────────
+var SV_CHANNELS = [
+  {id:'gmaps',    name:'Google Maps',     color:'#1a73e8', desc:'Spec. hodiny na Business Profile'},
+  {id:'wolt',     name:'Wolt',            color:'#009de0', desc:'Email partner podpo\u0159e min. 48h p\u0159edem'},
+  {id:'firmy',    name:'Firmy.cz',        color:'#2e7d32', desc:'P\u0159idat pozn\u00e1mku ke sv\u00e1tku'},
+  {id:'web',      name:'Web lahudky.cz',  color:'#5c35cc', desc:'Aktualizovat str\u00e1nku prodejny'},
+  {id:'whatsapp', name:'WhatsApp skupiny',color:'#25d366', desc:'Informovat skupiny PRODEJNY + VESTEC'},
+  {id:'staff',    name:'Zam\u011bstnanci', color:'#6B3012', desc:'Vedouc\xed potvrdili hodiny sv\u00e1tku'}
+];
+
+function showSvatekChecklist() {
+  var sel = document.getElementById('sv-global-sel');
+  var key = sel ? (sel.value || (SAINTS[0] && SAINTS[0].date)) : '';
+  var sv = SAINTS.find(function(x){ return x.date === key; });
+  var panel = document.getElementById('sv-checklist-panel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  setTimeout(function(){ panel.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+  var subtitle = document.getElementById('sv-cl-subtitle');
+  if (subtitle && sv) subtitle.textContent = sv.date + ' ' + sv.den + ' — ' + sv.name;
+  renderSvatekChecklist(key);
+}
+
+function renderSvatekChecklist(key) {
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem('ll_sv_checklist') || '{}'); } catch(e){}
+  var clData = stored[key] || {};
+  var setCount = stores.filter(function(s){ return !!getSvMode((s.saints||{})[key]||{}); }).length;
+  var doneCount = SV_CHANNELS.filter(function(ch){ return !!clData[ch.id]; }).length;
+
+  var stats = document.getElementById('sv-cl-stats');
+  if (stats) {
+    stats.innerHTML = '<strong>' + setCount + ' z ' + stores.length + ' prodejen</strong> m\u00e1 zadan\xe9 hodiny.'
+      + (setCount < stores.length ? ' <span style="color:var(--closed);">\u26a0 ' + (stores.length-setCount) + ' nem\u00e1 zad\u00e1no</span>' : ' \u2713')
+      + ' &nbsp;|&nbsp; <strong>' + doneCount + ' z ' + SV_CHANNELS.length + ' kan\u00e1l\u016f</strong> hotovo.';
+  }
+
+  var container = document.getElementById('sv-cl-items');
+  if (!container) return;
+  container.innerHTML = SV_CHANNELS.map(function(ch) {
+    var done = !!clData[ch.id];
+    var who  = clData[ch.id + '_who']  || '';
+    var when = clData[ch.id + '_when'] || '';
+    return '<div onclick="toggleSvCheck(\'' + key + '\',\'' + ch.id + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;" onmouseover="this.style.background=\'var(--brand-pale)\'" onmouseout="this.style.background=\'\'">'
+      + '<div style="width:24px;height:24px;border-radius:6px;border:2px solid ' + (done ? ch.color : 'var(--border)') + ';background:' + (done ? ch.color : 'white') + ';flex-shrink:0;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:700;transition:all .15s;">' + (done ? '\u2713' : '') + '</div>'
+      + '<div style="flex:1;">'
+        + '<div style="font-size:13px;font-weight:600;color:' + (done ? 'var(--text3)' : 'var(--text)') + ';' + (done ? 'text-decoration:line-through;' : '') + '">' + ch.name + '</div>'
+        + '<div style="font-size:11px;color:var(--text3);">' + ch.desc + '</div>'
+        + (done && who ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;">\u2713 ' + who + (when ? ' \u00b7 ' + when : '') + '</div>' : '')
+      + '</div>'
+      + '<div style="width:20px;height:20px;border-radius:50%;background:' + ch.color + ';flex-shrink:0;opacity:' + (done ? '1' : '0.25') + ';transition:opacity .15s;"></div>'
+    + '</div>';
+  }).join('');
+}
+
+function toggleSvCheck(key, chId) {
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem('ll_sv_checklist') || '{}'); } catch(e){}
+  if (!stored[key]) stored[key] = {};
+  var done = !stored[key][chId];
+  stored[key][chId] = done;
+  if (done) {
+    var author = getAuthor() || 'nezn\u00e1m\xfd';
+    var now = new Date();
+    var ts = now.toLocaleDateString('cs-CZ') + ' ' + now.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+    stored[key][chId + '_who']  = author;
+    stored[key][chId + '_when'] = ts;
+  } else {
+    delete stored[key][chId + '_who'];
+    delete stored[key][chId + '_when'];
+  }
+  localStorage.setItem('ll_sv_checklist', JSON.stringify(stored));
+  renderSvatekChecklist(key);
+}
+
+function resetSvatekChecklist() {
+  var sel = document.getElementById('sv-global-sel');
+  var key = sel ? (sel.value || '') : '';
+  if (!confirm('Vymazat checklist pro tento sv\u00e1tek?')) return;
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem('ll_sv_checklist') || '{}'); } catch(e){}
+  delete stored[key];
+  localStorage.setItem('ll_sv_checklist', JSON.stringify(stored));
+  renderSvatekChecklist(key);
+}
+
 // ─── INIT ────────────────────────────────────────────────────────
 loadData();
 renderSidebar();
 renderLiveGrid();
 updateClock();
 initMobile();
+initAuthor();
 
 // Keyboard shortcut: Ctrl+S = save
 document.addEventListener('keydown',function(e){
