@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="cs">
 <head>
@@ -2032,10 +2031,7 @@ function openStoreByIdx(idx, switchToStoreView) {
   renderSidebar();
   // Na mobilu zavri sidebar sheet
   if (window.innerWidth <= 700) {
-    var sb = document.querySelector('.sidebar');
-    var ov = document.getElementById('sidebar-overlay');
-    sb.classList.remove('open');
-    ov.classList.remove('open');
+    closeSidebarSheet();
     document.querySelectorAll('.mob-nav-btn').forEach(function(b){ b.classList.remove('active'); });
     var mbn = document.getElementById('mbn-store'); if(mbn) mbn.classList.add('active');
   }
@@ -2777,13 +2773,25 @@ function openPosterGenerator() {
 }
 
 /* ── MOBILNÍ MENU ── */
+function closeSidebarSheet() {
+  var sb = document.querySelector('.sidebar');
+  var ov = document.getElementById('sidebar-overlay');
+  sb.classList.remove('open');
+  ov.classList.remove('open');
+  ov.style.display = '';
+}
+
 function toggleMobileMenu() {
   var sb = document.querySelector('.sidebar');
   var ov = document.getElementById('sidebar-overlay');
   var isOpen = sb.classList.contains('open');
-  sb.classList.toggle('open', !isOpen);
-  if (!isOpen) { ov.style.display='block'; ov.classList.add('open'); }
-  else { ov.classList.remove('open'); setTimeout(function(){ ov.style.display=''; }, 300); }
+  if (isOpen) {
+    closeSidebarSheet();
+  } else {
+    sb.classList.add('open');
+    ov.style.display = 'block';
+    ov.classList.add('open');
+  }
 }
 
 function initMobile() {
@@ -2791,8 +2799,7 @@ function initMobile() {
   if (btn) btn.style.display = 'none';
   window.addEventListener('resize', function() {
     if (window.innerWidth > 700) {
-      document.querySelector('.sidebar').classList.remove('open');
-      document.getElementById('sidebar-overlay').classList.remove('open');
+      closeSidebarSheet();
       closeMoreDrawer();
     }
   });
