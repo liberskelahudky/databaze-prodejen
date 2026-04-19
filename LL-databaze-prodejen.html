@@ -412,6 +412,38 @@ body {
 }
 .zmrz-type-icon { font-size: 22px; line-height: 1; }
 
+/* ═══ TECH KONTAKTY ═══ */
+.tech-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 32px;
+  gap: 8px; align-items: center;
+  background: var(--surface2); border-radius: var(--r);
+  padding: 10px 12px; margin-bottom: 6px;
+}
+.tech-card:hover { background: var(--brand-pale); }
+.tech-card input {
+  padding: 7px 10px; font-family: var(--font); font-size: 12px;
+  border: none; border-radius: var(--r);
+  background: white; color: var(--text); outline: none; width: 100%;
+  transition: box-shadow .15s;
+}
+.tech-card input:focus { box-shadow: 0 0 0 2px var(--brand-l); }
+.tech-card input::placeholder { color: var(--text3); }
+.tech-del {
+  width: 28px; height: 28px; border: none; border-radius: var(--r);
+  background: none; color: var(--text3); cursor: pointer;
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  transition: all .12s; flex-shrink: 0;
+}
+.tech-del:hover { background: var(--closed-bg); color: var(--closed); }
+.tech-card-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 32px;
+  gap: 8px; padding: 0 12px 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text3);
+}
+
 
 .hours-display { display: grid; grid-template-columns: repeat(7,1fr); gap: 8px; }
 .hd-cell {
@@ -892,6 +924,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
         <button class="dtab" onclick="switchDTab('checklist',this)">Checklist změn</button>
         <button class="dtab" onclick="switchDTab('poznamky',this)">Poznámky</button>
         <button class="dtab" onclick="switchDTab('tvradia',this)">TV / Rádio</button>
+        <button class="dtab" onclick="switchDTab('technika',this)">🔧 Pronájem & Technika</button>
         
       </div>
 
@@ -1159,7 +1192,42 @@ html, body { max-width: 100%; overflow-x: hidden; }
         <div id="tv-result-table"></div>
       </div>
 
-    
+      <!-- TAB: PRONÁJEM & TECHNIKA -->
+      <div class="tab-panel" id="tp-technika">
+
+        <div class="field-group">
+          <div class="field-group-title">Pronajímatel</div>
+          <div class="field-grid">
+            <div class="field"><label class="field-label">Jméno / firma</label><input type="text" class="field-input" id="f-landlord" placeholder="např. Jana Nováková, s.r.o." oninput="onFieldChange()" /></div>
+            <div class="field"><label class="field-label">Telefon</label><input type="tel" class="field-input" id="f-landlord-tel" oninput="onFieldChange()" /></div>
+            <div class="field"><label class="field-label">Email</label><input type="email" class="field-input" id="f-landlord-email" oninput="onFieldChange()" /></div>
+            <div class="field"><label class="field-label">Konec nájmu</label><input type="text" class="field-input" id="f-lease-end" placeholder="např. 31.12.2027" oninput="onFieldChange()" /></div>
+            <div class="field"><label class="field-label">Výměra (m²)</label><input type="text" class="field-input" id="f-area" placeholder="např. 45" oninput="onFieldChange()" /></div>
+            <div class="field"><label class="field-label">MHD / dostupnost</label><input type="text" class="field-input" id="f-mhd" placeholder="např. Metro A – 3 min chůze" oninput="onFieldChange()" /></div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-group-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Technické kontakty</span>
+            <button class="btn" style="font-size:11px;padding:4px 12px;" onclick="addTechKontakt()">+ Přidat kontakt</button>
+          </div>
+          <div id="tech-kontakty-list"></div>
+          <div id="tech-kontakty-empty" style="font-size:13px;color:var(--text3);font-style:italic;padding:12px 0;display:none;">
+            Zatím žádné kontakty. Přidej třeba správce budovy, odvoz odpadu, zásobování vodou…
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-group-title">Technické poznámky</div>
+          <div style="display:flex;align-items:center;gap:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:var(--r);padding:10px 14px;margin-bottom:10px;font-size:12px;color:#92400e;">
+            <span style="font-size:16px;flex-shrink:0;">⚠️</span>
+            <span><strong>Nezapisuj sem přístupové kódy, hesla ani PINy.</strong> Tento soubor není zabezpečený — data jsou přístupná každému, kdo má odkaz. Pro citlivé údaje použij sdílený 1Password, Bitwarden nebo soukromý Google Doc.</span>
+          </div>
+          <div class="field"><textarea id="f-tech-notes" rows="4" class="field-input" placeholder="Specifika budovy, kontakt na havárii, poznámky k nájmu… (BEZ hesel a kódů)" oninput="onFieldChange()" style="resize:vertical;font-family:var(--font);font-size:13px;"></textarea></div>
+        </div>
+
+      </div>
 
     </div><!-- /store-detail -->
   </div><!-- /view-store -->
@@ -1711,7 +1779,8 @@ function loadFromSheets() {
         'zmrzHours','zmrzVydej','zmrzFoto','zmrzNote','zmrzType',
         'zmrzlina','nfc','lcd','dvere','kavovar','lednice','vahy','pos',
         'okenko','barrier','seating','eshop','kiosek','vyroba','samoLednice',
-        'landlord','landlordTel','leaseEnd','area','mhd','parking','pokladny',
+        'landlord','landlordTel','landlordEmail','leaseEnd','area','mhd','parking','pokladny',
+        'techKontakty','techNotes',
         'notes','saints','exceptions','changelog',
         'lat','lng'
       ];
@@ -2278,8 +2347,11 @@ function fillStoreDetail(s) {
   var webLink = document.getElementById('f-web-link');
   if (webLink) { var wv=s.web||''; webLink.href=wv||'#'; webLink.style.display=wv?'':'none'; }
   setV('f-landlord', s.landlord||''); setV('f-landlord-tel', s.landlordTel||'');
+  setV('f-landlord-email', s.landlordEmail||'');
   setV('f-lease-end', s.leaseEnd||''); setV('f-area', s.area||'');
   setV('f-mhd', s.mhd||''); setV('f-parking', s.parking||'');
+  setV('f-tech-notes', s.techNotes||'');
+  renderTechKontakty();
   setV('f-pokladny', s.pokladny||0);
   setC('f-barrier', !!s.barrier); setC('f-seating', !!s.seating);
   setC('f-eshop', !!s.eshop); setC('f-kiosek', !!s.kiosek); setC('f-vyroba', !!s.vyroba);
@@ -2379,6 +2451,7 @@ function saveCurrentStore() {
   s.wolt = getV('f-wolt'); s.gmaps = getV('f-gmaps'); s.drive = getV('f-drive');
   s.firmy = getV('f-firmy'); s.web = getV('f-web');
   s.landlord = getV('f-landlord'); s.landlordTel = getV('f-landlord-tel');
+  s.landlordEmail = getV('f-landlord-email');
   s.leaseEnd = getV('f-lease-end'); s.area = getV('f-area');
   s.mhd = getV('f-mhd'); s.parking = getV('f-parking');
   s.barrier = getC('f-barrier'); s.seating = getC('f-seating');
@@ -2397,6 +2470,7 @@ function saveCurrentStore() {
   s.zmrzVydej = s.zmrzType === 'okenko' || s.zmrzType === 'prodejna';
   s.zmrzFoto = getV('f-zmrz-foto'); s.zmrzNote = getV('f-zmrz-note');
   s.notes = getV('f-notes');
+  s.techNotes = getV('f-tech-notes');
 
   // Hours from editor
   DAYS.forEach(function(d,i) {
@@ -4089,6 +4163,72 @@ function renderMapMarkers() {
 }
 
 
+
+// ─── TECH KONTAKTY ───────────────────────────────────────────────
+function renderTechKontakty() {
+  var s = stores[currentStoreIdx];
+  if (!s) return;
+  var list = s.techKontakty || [];
+  var container = document.getElementById('tech-kontakty-list');
+  var empty = document.getElementById('tech-kontakty-empty');
+  if (!container) return;
+
+  if (list.length === 0) {
+    container.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  container.innerHTML =
+    '<div class="tech-card-header"><span>Role / popis</span><span>Jméno</span><span>Telefon</span><span>Email / poznámka</span><span></span></div>' +
+    list.map(function(k, i) {
+      return '<div class="tech-card">'
+        + '<input type="text" placeholder="např. Správce budovy" value="' + esc(k.role||'') + '" oninput="updateTechKontakt(' + i + ',\'role\',this.value)" />'
+        + '<input type="text" placeholder="Jméno" value="' + esc(k.jmeno||'') + '" oninput="updateTechKontakt(' + i + ',\'jmeno\',this.value)" />'
+        + '<input type="tel" placeholder="Telefon" value="' + esc(k.tel||'') + '" oninput="updateTechKontakt(' + i + ',\'tel\',this.value)" />'
+        + '<input type="text" placeholder="Email / poznámka" value="' + esc(k.pozn||'') + '" oninput="updateTechKontakt(' + i + ',\'pozn\',this.value)" />'
+        + '<button class="tech-del" onclick="deleteTechKontakt(' + i + ')" title="Smazat">×</button>'
+        + '</div>';
+    }).join('');
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function addTechKontakt() {
+  var s = stores[currentStoreIdx];
+  if (!s) return;
+  if (!s.techKontakty) s.techKontakty = [];
+  s.techKontakty.push({role:'', jmeno:'', tel:'', pozn:''});
+  renderTechKontakty();
+  markDirty();
+  scheduleAutosave();
+  // Focus first input of new row
+  var cards = document.querySelectorAll('.tech-card');
+  if (cards.length) {
+    var inp = cards[cards.length-1].querySelector('input');
+    if (inp) setTimeout(function(){ inp.focus(); }, 50);
+  }
+}
+
+function updateTechKontakt(idx, field, val) {
+  var s = stores[currentStoreIdx];
+  if (!s || !s.techKontakty || !s.techKontakty[idx]) return;
+  s.techKontakty[idx][field] = val;
+  markDirty();
+  scheduleAutosave();
+}
+
+function deleteTechKontakt(idx) {
+  var s = stores[currentStoreIdx];
+  if (!s || !s.techKontakty) return;
+  s.techKontakty.splice(idx, 1);
+  renderTechKontakty();
+  markDirty();
+  scheduleAutosave();
+}
 
 // ─── ZMRZ TYPE SEGMENT ───────────────────────────────────────────
 function setZmrzType(val, silent) {
