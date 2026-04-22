@@ -1715,7 +1715,9 @@ input.sb-search:focus {
   #clock-display { font-size: 11px; padding: 5px 8px; }
   #save-badge { font-size: 10px; padding: 3px 7px; }
 
-  .body { display: block; }
+  .body { display: block; overflow: visible; }
+  .shell { height: auto; overflow: visible; }
+  .main { height: auto; overflow: visible; }
   .sidebar {
     position: fixed;
     top: 0; left: 0;
@@ -1727,7 +1729,6 @@ input.sb-search:focus {
     box-shadow: 6px 0 28px rgba(28,22,14,.14);
   }
   .sidebar.open { transform: translateX(0); }
-  .main { height: auto; }
   #main-area {
     padding: 14px 14px 90px;
     height: auto;
