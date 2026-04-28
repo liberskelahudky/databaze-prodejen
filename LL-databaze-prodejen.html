@@ -3398,38 +3398,17 @@ function loadFromSheets() {
         if(!s.exceptions) s.exceptions = {};
         if(!s.saints)     s.saints     = {};
         if(!s.changelog)  s.changelog  = [];
-
         stripNamePrefix(s);
-        // 1) Doplň z DEFAULT_STORES (statická data — foto, links, hodiny)
+        // Doplň pouze chybějící foto/lat/lng z DEFAULT_STORES (nejsou v Sheets)
         var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
         if(def) {
-          if(!s.photo)  s.photo  = def.photo  || '';
-          if(!s.lat)    s.lat    = def.lat;
-          if(!s.lng)    s.lng    = def.lng;
-        }
-
-        // 2) Merge z localStorage
-        // Pokud localStorage je novější než Sheets (uživatel právě uložil),
-        // localStorage VYHRAJE i když Sheets má hodnotu — jinak se mu hned po Save změna přepíše zpět.
-        var loc = localBackup.find(function(l){ return l.id===s.id; });
-        if(loc) {
-          // sheetsTs může být 0 (Apps Script vrací 0 při GET v současné verzi).
-          // Pokud sheetsTs je 0/neplatný, povoluj localStorage vždy vyhrát.
-          var localIsNewer = localTs > 0 && (sheetsTs === 0 || !sheetsTs || localTs > sheetsTs + 5000);
-          MERGE_FIELDS.forEach(function(field){
-            var sheetsVal = s[field];
-            var isEmpty = sheetsVal === undefined || sheetsVal === null || sheetsVal === '';
-            if (typeof sheetsVal === 'object' && sheetsVal !== null) {
-              isEmpty = Array.isArray(sheetsVal) ? sheetsVal.length === 0 : Object.keys(sheetsVal).length === 0;
-            }
-            // Pravidla: localStorage vyhraje pokud (a) Sheets je prázdný, NEBO (b) localStorage je novější
-            if (loc[field] !== undefined && (isEmpty || localIsNewer)) {
-              s[field] = loc[field];
-            }
-          });
+          if(!s.photo) s.photo = def.photo || '';
+          if(!s.lat)   s.lat   = def.lat;
+          if(!s.lng)   s.lng   = def.lng;
         }
       });
 
+      // Sheets = jediný zdroj pravdy. Žádný merge s localStorage.
       stores = sheetsData;
       localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
       localStorage.setItem('ll_saved_at', String(sheetsTs || Date.now()));
@@ -3467,12 +3446,15 @@ function saveData() {
     .then(function(resp) {
       if (resp && resp.ok) {
         setBadge('uloženo v Sheets ✓', false);
+        if (typeof showToast === 'function') showToast('Uloženo v Sheets ✓', 'ok');
       } else {
         setBadge('chyba Sheets: ' + (resp && resp.error || '?'), true);
+        if (typeof showToast === 'function') showToast('Chyba uložení do Sheets!', 'err');
       }
     })
     .catch(function(err) {
       setBadge('chyba spojení: ' + err.message, true);
+      if (typeof showToast === 'function') showToast('Offline – uloženo jen lokálně', 'warn');
     });
   } else {
     setBadge('uloženo', false);
