@@ -3472,7 +3472,7 @@ function setBadge(text, dirty) {
 }
 
 // Autosave every 30s
-setInterval(function(){ if(isDirty) saveData(); }, 30000);
+setInterval(function(){ if(isDirty) saveData(); }, 3000);
 
 // Debounced autosave — uloží 4s po poslední změně v detailu prodejny
 var _autosaveTimer = null;
