@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
    ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v40                      ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
@@ -3020,9 +3020,10 @@ input.sb-search:focus {
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <label style="font-size:12px;color:var(--ink-2);">Svátek:</label>
-        <select id="sv-global-sel" onchange="renderSvatkyView()" style="padding:7px 10px;font-size:13px;font-family:var(--font);border:1px solid var(--line);border-radius:var(--r);background:var(--paper);color:var(--ink);outline:none;"></select>
+        <select id="sv-global-sel" onchange="renderSvatkyView();refreshSvatekChecklistIfOpen();" style="padding:7px 10px;font-size:13px;font-family:var(--font);border:1px solid var(--line);border-radius:var(--r);background:var(--paper);color:var(--ink);outline:none;"></select>
         <button class="btn" onclick="copySvatkyAll()">Kopírovat přehled</button>
         <button class="btn" onclick="showSvatekChecklist()" style="background:var(--wolt);color:white;">✓ Checklist kanálů</button>
+        <button class="btn" onclick="openStoriesModal()" style="background:#1A1410;color:white;">📱 Stories</button>
         <button class="btn" onclick="printPlakatSvatekAll()" style="background:var(--accent);color:white;">🖨 Tisknout plakáty</button>
       </div>
     </div>
@@ -3046,12 +3047,15 @@ input.sb-search:focus {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
       <div>
         <div class="view-title" style="font-size:20px;">Checklist kanálů</div>
-        <div class="view-sub" id="sv-cl-subtitle"></div>
+        <div class="view-sub" id="sv-cl-subtitle" style="font-weight:700;color:var(--accent);"></div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="resetSvatekChecklist()">Vymazat</button>
         <button class="btn btn-ghost" onclick="document.getElementById('sv-checklist-panel').style.display='none'">Zavřít</button>
       </div>
+    </div>
+    <div id="sv-cl-banner" style="background:var(--accent-pale);border:1px solid var(--accent-line);border-radius:var(--r);padding:8px 14px;margin-bottom:10px;font-size:11px;color:var(--accent-d);">
+      💡 Checklist se ukládá zvlášť pro každý svátek. Pokud změníš svátek v rozbalovacím menu nahoře, checklist se automaticky překreslí.
     </div>
     <div id="sv-cl-stats" style="background:var(--paper-2);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:13px;"></div>
     <div id="sv-cl-items" style="background:var(--paper);border-radius:var(--r2);border:1px solid var(--line);overflow:hidden;"></div>
@@ -6070,6 +6074,20 @@ function resetSvatekChecklist() {
   renderSvatekChecklist(key);
 }
 
+// ── BUG-FIX: pokud je checklist panel otevřený a uživatel změní svátek
+// v dropdownu, automaticky překresli checklist na nový svátek.
+// Bez toho se klikání zapisovalo do předchozího svátku (stale UI).
+function refreshSvatekChecklistIfOpen() {
+  var panel = document.getElementById('sv-checklist-panel');
+  if (!panel || panel.style.display === 'none') return;
+  var sel = document.getElementById('sv-global-sel');
+  var key = sel ? (sel.value || (SAINTS[0] && SAINTS[0].date)) : '';
+  var sv = SAINTS.find(function(x){ return x.date === key; });
+  var subtitle = document.getElementById('sv-cl-subtitle');
+  if (subtitle && sv) subtitle.textContent = sv.date + ' ' + sv.den + ' \u2014 ' + sv.name;
+  renderSvatekChecklist(key);
+}
+
 
 // ─── INFO TAB HELPERS ────────────────────────────────────────────
 function setOZ(name) {
@@ -6452,6 +6470,736 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
 
 </script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <div id="toast-stack" aria-live="polite"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STATE HOLIDAYS — STORIES GENERATOR (1080×1920 PNG)
+     ═══════════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── Modal shell ─────────────────────────────────────────── */
+#stories-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 14, 10, 0.78);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: none;
+  align-items: flex-start; justify-content: center;
+  padding: 24px 16px; overflow-y: auto;
+}
+#stories-modal-overlay.active { display: flex; }
+
+#stories-modal {
+  background: var(--canvas);
+  width: 100%; max-width: 1180px;
+  border-radius: var(--r3);
+  box-shadow: var(--sh-lg);
+  overflow: hidden;
+  margin: auto 0;
+}
+
+.sm-head {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--paper);
+}
+.sm-head-title {
+  font-family: var(--display);
+  font-size: 22px; font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.sm-head-title small {
+  display: block; font-family: var(--font); font-size: 11px;
+  color: var(--ink-3); font-weight: 400; margin-top: 2px;
+  letter-spacing: 0.01em;
+}
+.sm-close {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: transparent; border: 1px solid var(--line);
+  cursor: pointer; font-size: 20px; color: var(--ink-2);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.sm-close:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+.sm-body {
+  display: grid; grid-template-columns: 320px 1fr;
+  gap: 0;
+  min-height: 600px;
+}
+@media (max-width: 880px) {
+  .sm-body { grid-template-columns: 1fr; }
+}
+
+/* ── Sidebar ────────────────────────────────────────────── */
+.sm-side {
+  padding: 22px 24px;
+  border-right: 1px solid var(--line);
+  background: var(--paper);
+}
+@media (max-width: 880px) {
+  .sm-side { border-right: none; border-bottom: 1px solid var(--line); }
+}
+
+.sm-side-label {
+  font-size: 10px; font-weight: 700;
+  color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  margin-bottom: 12px;
+}
+
+.sm-holidays { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+
+.sm-h-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all .12s;
+  user-select: none;
+}
+.sm-h-chip:hover { border-color: var(--ink-3); }
+.sm-h-chip input { margin: 0; cursor: pointer; accent-color: var(--accent); width: 16px; height: 16px; }
+.sm-h-chip.checked {
+  background: var(--accent-pale);
+  border-color: var(--accent-line);
+}
+.sm-h-chip-date {
+  font-family: var(--display); font-weight: 600; font-size: 14px;
+  color: var(--ink);
+}
+.sm-h-chip-name {
+  font-size: 11px; color: var(--ink-3);
+  margin-top: 1px;
+}
+
+.sm-options {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.sm-opt {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--ink-2);
+  cursor: pointer; user-select: none;
+}
+.sm-opt input { accent-color: var(--accent); }
+
+.sm-actions {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 22px; padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.sm-btn {
+  padding: 11px 16px;
+  font-family: var(--font); font-weight: 600; font-size: 13px;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+.sm-btn-primary { background: var(--ink); color: white; }
+.sm-btn-primary:hover { background: var(--accent); }
+.sm-btn-primary:disabled { background: var(--ink-4); cursor: not-allowed; }
+.sm-btn-ghost { background: transparent; border-color: var(--line-strong); color: var(--ink-2); }
+.sm-btn-ghost:hover { background: var(--paper-2); }
+
+/* ── Preview area ─────────────────────────────────────────── */
+.sm-preview {
+  padding: 22px 24px;
+  background: var(--paper-2);
+  overflow-x: auto;
+}
+.sm-preview-empty {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; min-height: 480px;
+  color: var(--ink-3); font-size: 13px;
+  text-align: center;
+}
+.sm-preview-grid {
+  display: flex; gap: 22px; flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.sm-preview-card {
+  display: flex; flex-direction: column; gap: 10px;
+  flex-shrink: 0;
+}
+.sm-preview-card-label {
+  font-family: var(--display); font-style: italic;
+  font-size: 13px; color: var(--ink-3);
+  text-align: center;
+}
+.sm-preview-frame {
+  width: 270px; height: 480px;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(20,14,10,.18), 0 1px 3px rgba(20,14,10,.06);
+  position: relative;
+  background: white;
+}
+.sm-preview-scale {
+  transform: scale(0.25);
+  transform-origin: 0 0;
+  width: 1080px; height: 1920px;
+}
+.sm-preview-actions {
+  display: flex; gap: 6px;
+}
+.sm-preview-btn {
+  flex: 1; padding: 7px 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 11px; color: var(--ink-2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sm-preview-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* ── The actual story (1080×1920) ─────────────────────────── */
+.story-canvas {
+  width: 1080px; height: 1920px;
+  background: linear-gradient(180deg, #FBF7F0 0%, #F4EDDF 100%);
+  font-family: 'Bebas Neue', 'Geist', system-ui, sans-serif;
+  color: #1A1410;
+  position: relative;
+  display: flex; flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Top decorative band */
+.sc-top-band {
+  height: 18px;
+  background: #B85032;
+  flex-shrink: 0;
+}
+.sc-top-deco {
+  height: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    #1A1410 0 14px,
+    transparent 14px 28px
+  );
+  flex-shrink: 0;
+  opacity: .4;
+}
+
+/* Header */
+.sc-header {
+  padding: 56px 96px 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.sc-brand {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  letter-spacing: 0.42em;
+  color: #8A3A22;
+  margin-bottom: 18px;
+}
+.sc-divider-top {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; margin-bottom: 28px;
+}
+.sc-divider-line {
+  flex: 0 0 90px; height: 1px; background: rgba(26,20,16,.3);
+}
+.sc-divider-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #B85032;
+}
+.sc-headline {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 192px;
+  line-height: 0.86;
+  letter-spacing: 0.02em;
+  color: #1A1410;
+  margin-bottom: 22px;
+}
+.sc-headline span { display: block; }
+.sc-headline .accent { color: #B85032; }
+.sc-date {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: #1A1410;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.sc-day {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: #8B7A65;
+  letter-spacing: 0.14em;
+}
+
+/* Sub-banner */
+.sc-subbanner {
+  margin: 22px 96px 0;
+  padding: 16px 24px;
+  background: rgba(184,80,50,.08);
+  border: 1px solid #EDC7AE;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  flex-shrink: 0;
+}
+.sc-subbanner-icon { font-size: 22px; }
+.sc-subbanner-text {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #8A3A22;
+  letter-spacing: 0.12em;
+}
+
+/* Stores list */
+.sc-stores {
+  flex: 1;
+  padding: 28px 96px 16px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sc-stores-header {
+  display: flex; justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #1A1410;
+  margin-bottom: 6px;
+  font-family: 'Geist', sans-serif;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.18em;
+  color: #8B7A65;
+  flex-shrink: 0;
+}
+
+.sc-store {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(26,20,16,.08);
+}
+.sc-store:last-child { border-bottom: none; }
+
+.sc-store-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 38px;
+  color: #1A1410;
+  letter-spacing: 0.02em;
+  flex: 1; padding-right: 14px;
+  line-height: 1;
+}
+.sc-store-hours {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 38px;
+  color: #1A1410;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  line-height: 1;
+}
+.sc-store.is-closed .sc-store-name { color: #8B7A65; }
+.sc-store.is-closed .sc-store-hours {
+  color: #B83A2E;
+  font-size: 30px;
+  letter-spacing: 0.18em;
+}
+.sc-store.is-fallback .sc-store-hours {
+  color: #4A3D30;
+}
+
+/* Compact mode for many stores */
+.story-canvas.is-compact .sc-store { padding: 8px 0; }
+.story-canvas.is-compact .sc-store-name { font-size: 32px; }
+.story-canvas.is-compact .sc-store-hours { font-size: 32px; }
+.story-canvas.is-compact .sc-store.is-closed .sc-store-hours { font-size: 26px; }
+
+/* Footer */
+.sc-footer {
+  padding: 18px 96px 40px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.sc-footer-line {
+  width: 120px; height: 1px;
+  background: rgba(26,20,16,.25);
+  margin: 0 auto 16px;
+}
+.sc-footer-web {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 38px;
+  color: #1A1410;
+  letter-spacing: 0.16em;
+  margin-bottom: 8px;
+}
+.sc-footer-note {
+  font-family: 'Geist', sans-serif;
+  font-size: 13px; color: #8B7A65;
+  letter-spacing: 0.02em;
+}
+
+/* Bottom decorative band */
+.sc-bot-band {
+  height: 8px;
+  background: #B85032;
+  flex-shrink: 0;
+}
+
+/* Off-screen export stage */
+#stories-export-stage {
+  position: fixed;
+  left: -100000px; top: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+#stories-export-stage.is-exporting {
+  visibility: visible;
+}
+</style>
+
+<!-- ─── MODAL ───────────────────────────────────────────────── -->
+<div id="stories-modal-overlay" onclick="if(event.target===this) closeStoriesModal()">
+  <div id="stories-modal">
+    <div class="sm-head">
+      <div class="sm-head-title">
+        Stories pro státní svátky
+        <small>1080 × 1920 px • Instagram / Facebook story • web popup</small>
+      </div>
+      <button class="sm-close" onclick="closeStoriesModal()" aria-label="Zavřít">×</button>
+    </div>
+    <div class="sm-body">
+      <aside class="sm-side">
+        <div class="sm-side-label">Vyber svátky</div>
+        <div class="sm-holidays" id="sm-holidays"></div>
+
+        <div class="sm-options">
+          <div class="sm-side-label" style="margin-bottom:8px;">Možnosti</div>
+          <label class="sm-opt">
+            <input type="checkbox" id="sm-opt-fallback" checked onchange="renderStoriesPreview()">
+            Doplnit běžnou otevírací dobu, kde není svátek nastavený
+          </label>
+          <label class="sm-opt">
+            <input type="checkbox" id="sm-opt-skipclosed" onchange="renderStoriesPreview()">
+            Skrýt prodejny, které mají zavřeno
+          </label>
+        </div>
+
+        <div class="sm-actions">
+          <button class="sm-btn sm-btn-primary" id="sm-download-all" onclick="downloadAllStories()">⬇ Stáhnout všechny PNG</button>
+          <button class="sm-btn sm-btn-ghost" onclick="closeStoriesModal()">Zavřít</button>
+        </div>
+      </aside>
+      <main class="sm-preview" id="sm-preview">
+        <div class="sm-preview-empty">Vyber alespoň jeden svátek vlevo.</div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden full-size canvases for PNG export -->
+<div id="stories-export-stage"></div>
+
+<script>
+(function(){
+  // ── Czech month names (genitive case for date format) ─────────
+  var CZ_MONTHS = ['ledna','února','března','dubna','května','června',
+                   'července','srpna','září','října','listopadu','prosince'];
+
+  function fmtCzechDate(dateKey) {
+    // dateKey example: "01.05."
+    var p = dateKey.split('.');
+    var d = parseInt(p[0], 10);
+    var m = parseInt(p[1], 10);
+    var y = new Date().getFullYear();
+    return d + '. ' + CZ_MONTHS[m-1] + ' ' + y;
+  }
+
+  // ── Get hours to display for a store on this holiday ───────────
+  function getStoreHoursForStory(s, key, fallback) {
+    var sv = SAINTS.find(function(x){ return x.date === key; });
+    if (!sv) return { hours: '', kind: 'none' };
+    var dayIdx = DAY_NAMES_IDX[sv.den];
+
+    var eff = getEffectiveHoursForSaint(s, key);
+    if (eff === 'ZAVŘENO') return { hours: 'ZAVŘENO', kind: 'closed' };
+    if (eff) return { hours: eff, kind: 'set' };
+
+    if (!fallback) return { hours: '—', kind: 'none' };
+
+    // Fallback to standard day hours
+    var stdH = (s.hours && s.hours[dayIdx]) || '';
+    if (!stdH || stdH === 'ZAVŘENO') return { hours: 'ZAVŘENO', kind: 'closed' };
+    return { hours: stdH, kind: 'fallback' };
+  }
+
+  // ── Build the 1080×1920 story DOM ──────────────────────────────
+  function buildStoryHTML(key) {
+    var sv = SAINTS.find(function(x){ return x.date === key; });
+    if (!sv) return '';
+
+    var fallback = !!document.getElementById('sm-opt-fallback') &&
+                   document.getElementById('sm-opt-fallback').checked;
+    var skipClosed = !!document.getElementById('sm-opt-skipclosed') &&
+                     document.getElementById('sm-opt-skipclosed').checked;
+
+    var rows = [];
+    stores.forEach(function(s){
+      var h = getStoreHoursForStory(s, key, fallback);
+      if (h.kind === 'none') return; // skip undetermined when fallback off
+      if (skipClosed && h.kind === 'closed') return;
+      rows.push({ name: s.name, hours: h.hours, kind: h.kind });
+    });
+
+    var compactClass = rows.length > 16 ? ' is-compact' : '';
+    var dayLabel = sv.den.toUpperCase();
+    var dateText = fmtCzechDate(sv.date);
+
+    var rowsHtml = rows.map(function(r){
+      var cls = 'sc-store';
+      if (r.kind === 'closed') cls += ' is-closed';
+      else if (r.kind === 'fallback') cls += ' is-fallback';
+      return '<div class="'+cls+'">'
+        + '<div class="sc-store-name">'+escHtml(r.name)+'</div>'
+        + '<div class="sc-store-hours">'+escHtml(r.hours)+'</div>'
+        + '</div>';
+    }).join('');
+
+    return '<div class="story-canvas'+compactClass+'">'
+      + '<div class="sc-top-band"></div>'
+      + '<div class="sc-top-deco"></div>'
+      + '<div class="sc-header">'
+        + '<div class="sc-brand">Liberské lahůdky</div>'
+        + '<div class="sc-divider-top">'
+          + '<div class="sc-divider-line"></div>'
+          + '<div class="sc-divider-dot"></div>'
+          + '<div class="sc-divider-line"></div>'
+        + '</div>'
+        + '<div class="sc-headline"><span>Státní</span><span class="accent">svátek</span></div>'
+        + '<div class="sc-date">'+dateText+'</div>'
+        + '<div class="sc-day">'+escHtml(sv.den)+' • '+escHtml(sv.name)+'</div>'
+      + '</div>'
+      + '<div class="sc-subbanner">'
+        + '<span class="sc-subbanner-icon">🕒</span>'
+        + '<span class="sc-subbanner-text">Otevírací doba našich prodejen</span>'
+      + '</div>'
+      + '<div class="sc-stores">'
+        + '<div class="sc-stores-header"><span>Prodejna</span><span>Otevřeno</span></div>'
+        + rowsHtml
+      + '</div>'
+      + '<div class="sc-footer">'
+        + '<div class="sc-footer-line"></div>'
+        + '<div class="sc-footer-web">liberskelahudky.cz</div>'
+        + '<div class="sc-footer-note">Děkujeme, že nakupujete u nás 🤍</div>'
+      + '</div>'
+      + '<div class="sc-bot-band"></div>'
+    + '</div>';
+  }
+
+  function escHtml(str) {
+    return String(str==null?'':str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Modal open/close ───────────────────────────────────────────
+  window.openStoriesModal = function() {
+    var overlay = document.getElementById('stories-modal-overlay');
+    if (!overlay) return;
+    populateHolidayPicker();
+    overlay.classList.add('active');
+    // pre-select 1.5. and 8.5. by default if present
+    document.querySelectorAll('#sm-holidays input[type=checkbox]').forEach(function(cb){
+      if (cb.value === '01.05.' || cb.value === '08.05.') {
+        cb.checked = true;
+        cb.parentElement.classList.add('checked');
+      }
+    });
+    renderStoriesPreview();
+  };
+  window.closeStoriesModal = function() {
+    var overlay = document.getElementById('stories-modal-overlay');
+    if (overlay) overlay.classList.remove('active');
+  };
+
+  // ── Build holiday checkbox list ────────────────────────────────
+  function populateHolidayPicker() {
+    var wrap = document.getElementById('sm-holidays');
+    if (!wrap) return;
+    // Show only upcoming + a few past (sort SAINTS by month/day starting from today)
+    var now = new Date();
+    var today = (now.getMonth()+1)*100 + now.getDate();
+    var saintsOrdered = SAINTS.slice().sort(function(a,b){
+      var pa = a.date.split('.'), pb = b.date.split('.');
+      var ka = parseInt(pa[1])*100 + parseInt(pa[0]);
+      var kb = parseInt(pb[1])*100 + parseInt(pb[0]);
+      // sort: upcoming first (>= today), then past
+      var fa = ka >= today ? 0 : 1;
+      var fb = kb >= today ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      return ka - kb;
+    });
+    wrap.innerHTML = saintsOrdered.map(function(sv){
+      return '<label class="sm-h-chip" data-key="'+sv.date+'">'
+        + '<input type="checkbox" value="'+sv.date+'" onchange="this.parentElement.classList.toggle(\'checked\',this.checked);renderStoriesPreview();">'
+        + '<div>'
+          + '<div class="sm-h-chip-date">'+sv.date+' • '+sv.den+'</div>'
+          + '<div class="sm-h-chip-name">'+escHtml(sv.name)+'</div>'
+        + '</div>'
+      + '</label>';
+    }).join('');
+  }
+
+  // ── Render previews for selected holidays ──────────────────────
+  window.renderStoriesPreview = function() {
+    var preview = document.getElementById('sm-preview');
+    var stage = document.getElementById('stories-export-stage');
+    if (!preview || !stage) return;
+
+    var keys = Array.prototype.slice.call(
+      document.querySelectorAll('#sm-holidays input[type=checkbox]:checked')
+    ).map(function(cb){ return cb.value; });
+
+    if (keys.length === 0) {
+      preview.innerHTML = '<div class="sm-preview-empty">Vyber alespoň jeden svátek vlevo.</div>';
+      stage.innerHTML = '';
+      return;
+    }
+
+    var html = '<div class="sm-preview-grid">';
+    var stageHtml = '';
+    keys.forEach(function(key){
+      var sv = SAINTS.find(function(x){ return x.date === key; });
+      if (!sv) return;
+      var storyHtml = buildStoryHTML(key);
+      var safeKey = key.replace(/\./g,'_');
+      html += '<div class="sm-preview-card">'
+        + '<div class="sm-preview-card-label">'+sv.date+' '+escHtml(sv.name)+'</div>'
+        + '<div class="sm-preview-frame">'
+          + '<div class="sm-preview-scale">'+storyHtml+'</div>'
+        + '</div>'
+        + '<div class="sm-preview-actions">'
+          + '<button class="sm-preview-btn" onclick="downloadOneStory(\''+key+'\')">⬇ Stáhnout PNG</button>'
+        + '</div>'
+      + '</div>';
+      // Off-screen full-size copy for export
+      stageHtml += '<div id="story-export-'+safeKey+'" data-key="'+key+'">'+storyHtml+'</div>';
+    });
+    html += '</div>';
+    preview.innerHTML = html;
+    stage.innerHTML = stageHtml;
+  };
+
+  // ── PNG export ─────────────────────────────────────────────────
+  function captureStory(key) {
+    var safeKey = key.replace(/\./g,'_');
+    var node = document.querySelector('#story-export-'+safeKey+' .story-canvas');
+    if (!node) return Promise.reject(new Error('Story node not found'));
+    var stage = document.getElementById('stories-export-stage');
+    if (stage) stage.classList.add('is-exporting');
+    return document.fonts.ready.then(function(){
+      return html2canvas(node, {
+        width: 1080, height: 1920,
+        windowWidth: 1080, windowHeight: 1920,
+        scale: 1,
+        backgroundColor: null,
+        useCORS: true,
+        logging: false
+      });
+    }).then(function(canvas){
+      if (stage) stage.classList.remove('is-exporting');
+      return canvas;
+    }).catch(function(err){
+      if (stage) stage.classList.remove('is-exporting');
+      throw err;
+    });
+  }
+
+  function canvasToBlob(canvas) {
+    return new Promise(function(res){
+      canvas.toBlob(function(b){ res(b); }, 'image/png', 0.95);
+    });
+  }
+
+  function triggerDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 100);
+  }
+
+  function buildFilename(key) {
+    var sv = SAINTS.find(function(x){ return x.date === key; });
+    var slug = sv ? sv.name.toLowerCase()
+      .replace(/[áàäâ]/g,'a').replace(/[éèëê]/g,'e').replace(/[íìïî]/g,'i')
+      .replace(/[óòöô]/g,'o').replace(/[úùüû]/g,'u').replace(/[ý]/g,'y')
+      .replace(/[čć]/g,'c').replace(/[ďđ]/g,'d').replace(/[ě]/g,'e').replace(/[ň]/g,'n')
+      .replace(/[ř]/g,'r').replace(/[šś]/g,'s').replace(/[ť]/g,'t').replace(/[ž]/g,'z')
+      .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+      : 'svatek';
+    return 'LL-story-' + key.replace(/\./g,'-').replace(/-$/,'') + '-' + slug + '.png';
+  }
+
+  window.downloadOneStory = function(key) {
+    var btn = event && event.target;
+    var origText = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = '⏳ Generuji…'; btn.disabled = true; }
+    captureStory(key).then(canvasToBlob).then(function(blob){
+      triggerDownload(blob, buildFilename(key));
+      if (btn) { btn.textContent = '✓ Staženo'; setTimeout(function(){
+        btn.textContent = origText; btn.disabled = false;
+      }, 1500); }
+    }).catch(function(err){
+      console.error('Story export error', err);
+      alert('Chyba při generování PNG: ' + (err.message || err));
+      if (btn) { btn.textContent = origText; btn.disabled = false; }
+    });
+  };
+
+  window.downloadAllStories = function() {
+    var keys = Array.prototype.slice.call(
+      document.querySelectorAll('#sm-holidays input[type=checkbox]:checked')
+    ).map(function(cb){ return cb.value; });
+    if (keys.length === 0) { alert('Vyber alespoň jeden svátek.'); return; }
+    var btn = document.getElementById('sm-download-all');
+    var orig = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = '⏳ Generuji 0/' + keys.length; btn.disabled = true; }
+    var i = 0;
+    function next() {
+      if (i >= keys.length) {
+        if (btn) { btn.textContent = '✓ Hotovo (' + keys.length + ')'; setTimeout(function(){
+          btn.textContent = orig; btn.disabled = false;
+        }, 2000); }
+        return;
+      }
+      var key = keys[i++];
+      if (btn) btn.textContent = '⏳ Generuji ' + i + '/' + keys.length;
+      captureStory(key).then(canvasToBlob).then(function(blob){
+        triggerDownload(blob, buildFilename(key));
+        // small delay so browser doesn't drop downloads
+        setTimeout(next, 350);
+      }).catch(function(err){
+        console.error('Story export error', err);
+        alert('Chyba u svátku '+key+': ' + (err.message || err));
+        setTimeout(next, 200);
+      });
+    }
+    next();
+  };
+
+  // Close on Escape
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      var ov = document.getElementById('stories-modal-overlay');
+      if (ov && ov.classList.contains('active')) closeStoriesModal();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
