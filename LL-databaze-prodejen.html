@@ -3550,43 +3550,46 @@ function loadFromSheets() {
 }
 
 // Uložení přes JSONP GET, fallback na no-cors fetch
+var _saveInFlight = false;
 function saveData() {
   var ts = Date.now();
-  // Lokální uložení vždy hned (rychlé, offline cache)
+  // Lokální uložení vždy hned (rychlé, offline cache) — neovlivněno Sheets
   _savedAt = ts;
   safeSaveStores();
   idbSet('saved_at', ts);
 
-  if (USE_SHEETS && SHEETS_URL) {
-    setBadge('ukládám do Sheets…', true);
-    var payload = {key: SHEETS_KEY, data: {stores: stores, savedAt: ts}};
-    fetch(SHEETS_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(resp) {
-      if (resp && resp.ok) {
-        // Až teď je vše skutečně uloženo
-        isDirty = false;
-        setBadge('uloženo v Sheets ✓', false);
-        if (typeof showToast === 'function') showToast('Uloženo v Sheets ✓', 'ok');
-      } else {
-        // Sheets odmítl — drž isDirty=true, autosave to zkusí znovu za 3s
-        setBadge('chyba Sheets: ' + (resp && resp.error || '?') + ' (zkusím znovu)', true);
-        if (typeof showToast === 'function') showToast('Chyba uložení do Sheets — automaticky zkusím znovu', 'err');
-      }
-    })
-    .catch(function(err) {
-      // Síťová chyba — drž isDirty=true
-      setBadge('offline (zkusím znovu): ' + err.message, true);
-      if (typeof showToast === 'function') showToast('Offline – automaticky zkusím znovu', 'warn');
-    });
-  } else {
-    // Bez Sheets je lokální uložení vše
+  if (!USE_SHEETS || !SHEETS_URL) {
     isDirty = false;
     setBadge('uloženo lokálně', false);
+    return;
   }
+  // Pokud běží předchozí request, přeskočíme — autosave to zkusí za 3s znovu
+  if (_saveInFlight) return;
+  _saveInFlight = true;
+
+  setBadge('ukládám do Sheets…', true);
+  var payload = {key: SHEETS_KEY, data: {stores: stores, savedAt: ts}};
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(resp) {
+    if (resp && resp.ok) {
+      isDirty = false;
+      setBadge('uloženo v Sheets ✓', false);
+      if (typeof showToast === 'function') showToast('Uloženo v Sheets ✓', 'ok');
+    } else {
+      // Sheets odmítl — isDirty zůstává true, autosave zkusí znovu
+      setBadge('chyba Sheets: ' + (resp && resp.error || '?') + ' (zkusím znovu)', true);
+      if (typeof showToast === 'function') showToast('Chyba uložení do Sheets — automaticky zkusím znovu', 'err');
+    }
+  })
+  .catch(function(err) {
+    setBadge('offline (zkusím znovu): ' + err.message, true);
+    if (typeof showToast === 'function') showToast('Offline – automaticky zkusím znovu', 'warn');
+  })
+  .then(function(){ _saveInFlight = false; }); // finally — uvolni flag pro další save
 }
 
 function markDirty() {
