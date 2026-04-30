@@ -3022,6 +3022,7 @@ input.sb-search:focus {
         <label style="font-size:12px;color:var(--ink-2);">Svátek:</label>
         <select id="sv-global-sel" onchange="renderSvatkyView();refreshSvatekChecklistIfOpen();" style="padding:7px 10px;font-size:13px;font-family:var(--font);border:1px solid var(--line);border-radius:var(--r);background:var(--paper);color:var(--ink);outline:none;"></select>
         <button class="btn" onclick="copySvatkyAll()">Kopírovat přehled</button>
+        <button class="btn" onclick="openYearOverview()" style="background:#5E2F1D;color:white;">📋 Roční přehled</button>
         <button class="btn" onclick="showSvatekChecklist()" style="background:var(--wolt);color:white;">✓ Checklist kanálů</button>
         <button class="btn" onclick="openStoriesModal()" style="background:#1A1410;color:white;">📱 Stories</button>
         <button class="btn" onclick="printPlakatSvatekAll()" style="background:var(--accent);color:white;">🖨 Tisknout plakáty</button>
@@ -3244,6 +3245,7 @@ var DEFAULT_STORES = [
 
 // ─── STATE ───────────────────────────────────────────────────────
 var stores = [];
+var _savedAt = 0; // timestamp — hydrate z IDB při boot, sync přístup pro porovnání
 var currentStoreIdx = -1;
 var currentClType = 'hours';
 var clChecked = {};
@@ -3268,71 +3270,182 @@ function stripAllNames(arr) {
   arr.forEach(stripNamePrefix);
 }
 
+// ─── ÚLOŽIŠTĚ: vlastní IndexedDB ───────────────────────────────
+// Tato aplikace má **vlastní IndexedDB databázi** (liberske-lahudky).
+// Nepoužívá localStorage, takže když uživatel maže data jiných aplikací
+// na stejné doméně (file://), naše data zůstávají nedotčená.
+// IndexedDB má i mnohem větší limit (gigabajty místo 5 MB).
+var DB_NAME = 'liberske-lahudky';
+var DB_STORE = 'kv';
+var DB_VERSION = 1;
+var _dbPromise = null;
+
+function _openDB() {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise(function(resolve, reject){
+    if (!window.indexedDB) { reject(new Error('IndexedDB není k dispozici')); return; }
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function() {
+      var db = req.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+    };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror   = function(){ reject(req.error); };
+  });
+  return _dbPromise;
+}
+
+function idbGet(key) {
+  return _openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(DB_STORE, 'readonly');
+      var req = tx.objectStore(DB_STORE).get(key);
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror   = function(){ reject(req.error); };
+    });
+  });
+}
+function idbSet(key, value) {
+  return _openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(value, key);
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror    = function(){ reject(tx.error); };
+    });
+  });
+}
+function idbDel(key) {
+  return _openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).delete(key);
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror    = function(){ reject(tx.error); };
+    });
+  });
+}
+
+// Uložit prodejny — async, ale fire-and-forget pro existující synchroní volající.
+// IDB má dost místa, žádné quota fallbacky neřešíme.
+function safeSaveStores() {
+  idbSet('stores', stores).catch(function(e){
+    console.error('[idb] save stores failed', e);
+    if (typeof showToast === 'function') {
+      showToast('Chyba při ukládání lokální zálohy: ' + e.message, 'error', 6000);
+    }
+  });
+  return true;
+}
+
+// Vyčistit lokální cache (Sheets zůstává netknuté). Používá se v 3× klik na logu.
+window.clearLocalStoreCache = function() {
+  if (!confirm('Vymazat lokální cache prodejen? Data v Google Sheets zůstávají.')) return;
+  Promise.all([idbDel('stores'), idbDel('saved_at')])
+    .then(function(){ alert('Cache vyčištěna. Obnov stránku (F5).'); })
+    .catch(function(e){ alert('Chyba: ' + (e.message || e)); });
+};
 
 
+
+// Async načtení dat z IndexedDB. Při prvním spuštění zmigruje data
+// ze starého localStorage a vyčistí localStorage klíče naší aplikace.
 function loadData() {
-  try {
-    var raw = localStorage.getItem('ll_stores_v2');
-    if (raw) {
-      stores = JSON.parse(raw);
-      stripAllNames(stores);
-      stores.forEach(function(s){
-        if(!s.exceptions) s.exceptions={};
-        var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
-        if(def) {
-          // Doplnit chybějící pole z DEFAULT_STORES (starší localStorage)
-          if(!s.photo)    s.photo    = def.photo    || '';
-          if(!s.gmaps)    s.gmaps    = def.gmaps    || '';
-          if(!s.firmy)    s.firmy    = def.firmy    || '';
-          if(!s.web)      s.web      = def.web      || '';
-          if(!s.zmrzHours) s.zmrzHours = def.zmrzHours || '';
-          // Souřadnice a foto — doplnit vždy (statická data)
-          if(!s.lat)      s.lat      = def.lat;
-          if(!s.lng)      s.lng      = def.lng;
-          if(!s.photo)    s.photo    = def.photo || '';
+  return Promise.all([idbGet('stores'), idbGet('saved_at')]).then(function(results) {
+    var idbStores = results[0];
+    var idbSavedAt = results[1];
+    if (Array.isArray(idbStores) && idbStores.length > 0) {
+      stores = idbStores;
+      _savedAt = idbSavedAt || 0;
+      _hydrateStores();
+      return;
+    }
+    // Žádná IDB data — zkusíme one-time migraci ze staré localStorage
+    var migrated = false;
+    try {
+      var raw = localStorage.getItem('ll_stores_v2');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          stores = parsed;
+          _savedAt = parseInt(localStorage.getItem('ll_saved_at') || '0', 10) || Date.now();
+          migrated = true;
         }
-      });
-      // Pokud ještě nemáme timestamp (starší verze), nastav ho teď
-      if (!localStorage.getItem('ll_saved_at')) {
-        localStorage.setItem('ll_saved_at', String(Date.now()));
       }
-    } else {
+    } catch(e) {}
+
+    if (!migrated) {
+      // Čistá instalace — výchozí data
       stores = JSON.parse(JSON.stringify(DEFAULT_STORES));
       stores.forEach(function(s){ if(!s.exceptions) s.exceptions={}; });
-      localStorage.setItem('ll_saved_at', '0');
+      _savedAt = 0;
     }
-  } catch(e) {
+    _hydrateStores();
+
+    // Ulož do IDB a smaž staré localStorage klíče naší aplikace
+    return Promise.all([
+      idbSet('stores', stores),
+      idbSet('saved_at', _savedAt)
+    ]).then(function(){
+      ['ll_stores_v2','ll_saved_at','ll_migration'].forEach(function(k){
+        try { localStorage.removeItem(k); } catch(e){}
+      });
+    });
+  }).catch(function(e) {
+    console.error('[loadData] IDB selhalo, používám výchozí data:', e);
     stores = JSON.parse(JSON.stringify(DEFAULT_STORES));
     stores.forEach(function(s){ if(!s.exceptions) s.exceptions={}; });
-  }
-  if (USE_SHEETS && SHEETS_URL) loadFromSheets();
-  runDataMigration();
-}
-function runDataMigration() {
-  var MIGRATION_VER = 3;
-  var done = parseInt(localStorage.getItem('ll_migration') || '0', 10);
-  if (done >= MIGRATION_VER) return;
-  var official = {"1": {"code": "64", "name": "64. Florenc – Na Poříčí", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "2": {"code": "53", "name": "53. Vodičkova", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00, So 10:00-17:00"}, "3": {"code": "68", "name": "68. Háje", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-14:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00"}, "4": {"code": "69", "name": "69. Arkády Pankrác", "hours": ["7:00-21:00", "7:00-21:00", "7:00-21:00", "7:00-21:00", "7:00-21:00", "9:00-21:00", "9:00-21:00"], "zmrzHours": ""}, "5": {"code": "66", "name": "66. Poliklinika Modřany", "hours": ["7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-14:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": ""}, "6": {"code": "70", "name": "70. DBK Olbrachtova", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-14:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00"}, "7": {"code": "65", "name": "65. Poliklinika Budějovická", "hours": ["6:30-18:00", "6:30-18:00", "6:30-18:00", "6:30-18:00", "6:30-17:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": "Po-Čt 10:00-17:00, Pá 10:00-16:00"}, "8": {"code": "60", "name": "60. Krč – Thomayerova", "hours": ["6:15-17:00", "6:15-17:00", "6:15-17:00", "6:15-17:00", "6:15-17:00", "8:00-17:00", "9:00-16:00"], "zmrzHours": "Po-So 10:00-16:00, Ne 10:00-15:00"}, "9": {"code": "52", "name": "52. Letná – Strossmayerovo nám.", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "10": {"code": "73", "name": "73. Holešovice", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 9:00-17:00"}, "11": {"code": "71", "name": "71. Dejvice", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "12": {"code": "51", "name": "51. Palmovka", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "13": {"code": "50", "name": "50. Anděl – Ostrovského", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-17:00"], "zmrzHours": "Po-Pá 10:00-18:00, So 10:00-17:00, Ne 10:00-16:00"}, "14": {"code": "51", "name": "51. Palmovka Cukrárna", "hours": ["8:00-19:00", "8:00-19:00", "8:00-19:00", "8:00-19:00", "8:00-19:00", "9:00-18:00", "9:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "15": {"code": "67", "name": "67. Ruzyně", "hours": ["6:30-17:00", "6:30-17:00", "6:30-17:00", "6:30-17:00", "6:30-16:00", "8:00-12:00", "ZAVŘENO"], "zmrzHours": "Po-Čt 10:00-16:00, Pá 10:00-15:00, So 10:00-11:00"}, "16": {"code": "72", "name": "72. Poliklinika Vysočany", "hours": ["7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-16:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": ""}, "17": {"code": "58", "name": "58. Jesenice", "hours": ["6:00-17:30", "6:00-17:30", "6:00-17:30", "6:00-17:30", "6:00-17:30", "7:00-11:00", "ZAVŘENO"], "zmrzHours": ""}, "18": {"code": "57", "name": "57. Libeř", "hours": ["7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-12:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-17:00, So 10:00-11:00"}, "19": {"code": "74", "name": "74. České Budějovice", "hours": ["7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "8:00-17:00", "8:00-17:00"], "zmrzHours": "Po-Pá 10:00-17:00, So-Ne 10:00-14:00"}, "20": {"code": "75", "name": "75. I.P. Pavlova", "hours": ["6:30-19:30", "6:30-19:30", "6:30-19:30", "6:30-19:30", "6:30-19:30", "8:00-19:00", "8:00-19:00"], "zmrzHours": "Po-Ne 10:00-18:00"}, "21": {"code": "76", "name": "76. OC Nový Smíchov", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-19:00", "8:00-19:00"], "zmrzHours": ""}, "22": {"code": "54", "name": "54. Hlavní nádraží", "hours": ["6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00"], "zmrzHours": "Po-Ne 10:00-22:00"}};
-  var changed = false;
-  stores.forEach(function(s) {
-    var u = official[s.id];
-    if (!u) return;
-    if (u.addr)      s.addr      = u.addr;
-    if (u.tel)       s.tel       = u.tel;
-    if (u.email)     s.email     = u.email;
-    if (u.hours)     s.hours     = u.hours;
-    if (u.code)      s.code      = u.code;
-    if (u.name)      s.name      = u.name;
-    if (u.zmrzHours !== undefined) s.zmrzHours = u.zmrzHours;
-    changed = true;
+    _savedAt = 0;
   });
-  if (changed) {
-    localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
-    localStorage.setItem('ll_saved_at', String(Date.now()));
-    localStorage.setItem('ll_migration', String(MIGRATION_VER));
-    isDirty = true;
-    setBadge('data aktualizovana - uloz do Sheets!', true);
-  }
+}
+
+// Doplnění chybějících polí z DEFAULT_STORES + sanity check
+function _hydrateStores() {
+  stripAllNames(stores);
+  stores.forEach(function(s){
+    if(!s.exceptions) s.exceptions={};
+    var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
+    if(def) {
+      if(!s.photo)     s.photo     = def.photo    || '';
+      if(!s.gmaps)     s.gmaps     = def.gmaps    || '';
+      if(!s.firmy)     s.firmy     = def.firmy    || '';
+      if(!s.web)       s.web       = def.web      || '';
+      if(!s.zmrzHours) s.zmrzHours = def.zmrzHours || '';
+      if(!s.lat)       s.lat       = def.lat;
+      if(!s.lng)       s.lng       = def.lng;
+    }
+  });
+}
+
+function runDataMigration() {
+  // Migrace dat — držena v IDB pod klíčem 'migration_version'
+  return idbGet('migration_version').then(function(done) {
+    var MIGRATION_VER = 3;
+    if ((done || 0) >= MIGRATION_VER) return;
+    var official = {"1": {"code": "64", "name": "64. Florenc – Na Poříčí", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "2": {"code": "53", "name": "53. Vodičkova", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00, So 10:00-17:00"}, "3": {"code": "68", "name": "68. Háje", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-14:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00"}, "4": {"code": "69", "name": "69. Arkády Pankrác", "hours": ["7:00-21:00", "7:00-21:00", "7:00-21:00", "7:00-21:00", "7:00-21:00", "9:00-21:00", "9:00-21:00"], "zmrzHours": ""}, "5": {"code": "66", "name": "66. Poliklinika Modřany", "hours": ["7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-14:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": ""}, "6": {"code": "70", "name": "70. DBK Olbrachtova", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-14:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00"}, "7": {"code": "65", "name": "65. Poliklinika Budějovická", "hours": ["6:30-18:00", "6:30-18:00", "6:30-18:00", "6:30-18:00", "6:30-17:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": "Po-Čt 10:00-17:00, Pá 10:00-16:00"}, "8": {"code": "60", "name": "60. Krč – Thomayerova", "hours": ["6:15-17:00", "6:15-17:00", "6:15-17:00", "6:15-17:00", "6:15-17:00", "8:00-17:00", "9:00-16:00"], "zmrzHours": "Po-So 10:00-16:00, Ne 10:00-15:00"}, "9": {"code": "52", "name": "52. Letná – Strossmayerovo nám.", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "10": {"code": "73", "name": "73. Holešovice", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 9:00-17:00"}, "11": {"code": "71", "name": "71. Dejvice", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "12": {"code": "51", "name": "51. Palmovka", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "13": {"code": "50", "name": "50. Anděl – Ostrovského", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-17:00"], "zmrzHours": "Po-Pá 10:00-18:00, So 10:00-17:00, Ne 10:00-16:00"}, "14": {"code": "51", "name": "51. Palmovka Cukrárna", "hours": ["8:00-19:00", "8:00-19:00", "8:00-19:00", "8:00-19:00", "8:00-19:00", "9:00-18:00", "9:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "15": {"code": "67", "name": "67. Ruzyně", "hours": ["6:30-17:00", "6:30-17:00", "6:30-17:00", "6:30-17:00", "6:30-16:00", "8:00-12:00", "ZAVŘENO"], "zmrzHours": "Po-Čt 10:00-16:00, Pá 10:00-15:00, So 10:00-11:00"}, "16": {"code": "72", "name": "72. Poliklinika Vysočany", "hours": ["7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-16:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": ""}, "17": {"code": "58", "name": "58. Jesenice", "hours": ["6:00-17:30", "6:00-17:30", "6:00-17:30", "6:00-17:30", "6:00-17:30", "7:00-11:00", "ZAVŘENO"], "zmrzHours": ""}, "18": {"code": "57", "name": "57. Libeř", "hours": ["7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-12:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-17:00, So 10:00-11:00"}, "19": {"code": "74", "name": "74. České Budějovice", "hours": ["7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "8:00-17:00", "8:00-17:00"], "zmrzHours": "Po-Pá 10:00-17:00, So-Ne 10:00-14:00"}, "20": {"code": "75", "name": "75. I.P. Pavlova", "hours": ["6:30-19:30", "6:30-19:30", "6:30-19:30", "6:30-19:30", "6:30-19:30", "8:00-19:00", "8:00-19:00"], "zmrzHours": "Po-Ne 10:00-18:00"}, "21": {"code": "76", "name": "76. OC Nový Smíchov", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-19:00", "8:00-19:00"], "zmrzHours": ""}, "22": {"code": "54", "name": "54. Hlavní nádraží", "hours": ["6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00"], "zmrzHours": "Po-Ne 10:00-22:00"}};
+    var changed = false;
+    stores.forEach(function(s) {
+      var u = official[s.id];
+      if (!u) return;
+      if (u.addr)      s.addr      = u.addr;
+      if (u.tel)       s.tel       = u.tel;
+      if (u.email)     s.email     = u.email;
+      if (u.hours)     s.hours     = u.hours;
+      if (u.code)      s.code      = u.code;
+      if (u.name)      s.name      = u.name;
+      if (u.zmrzHours !== undefined) s.zmrzHours = u.zmrzHours;
+      changed = true;
+    });
+    if (changed) {
+      safeSaveStores();
+      idbSet('saved_at', Date.now());
+      idbSet('migration_version', MIGRATION_VER);
+      isDirty = true;
+      setBadge('data aktualizovana - uloz do Sheets!', true);
+    } else {
+      idbSet('migration_version', MIGRATION_VER);
+    }
+  });
 }
 
 
@@ -3357,10 +3470,9 @@ function loadFromSheets() {
     if (data && data.stores && data.stores.length > 0) {
       // Porovnej timestampy — lokální data mají přednost, pokud jsou novější
       var sheetsTs = data.savedAt || 0;
-      var localTs  = parseInt(localStorage.getItem('ll_saved_at') || '0', 10);
-      if (localTs > sheetsTs) {
+      if (_savedAt > sheetsTs) {
         // Lokální data jsou novější → Sheets je zastaralý, nechej lokální a re-ulož
-        var age = Math.round((localTs - sheetsTs) / 60000);
+        var age = Math.round((_savedAt - sheetsTs) / 60000);
         setBadge('Sheets zastaralý (lokální o ' + age + ' min novější) — ukládám…', true);
         saveData(); // přepíše Sheets aktuálními daty
         return;
@@ -3368,19 +3480,10 @@ function loadFromSheets() {
       // Sheets je novější nebo stejný → použij Sheets, doplň chybějící pole
       var sheetsData = data.stores;
 
-      // Načti lokální zálohu pro merge chybějících polí
-      var localBackup = [];
-      try {
-        var _raw = localStorage.getItem('ll_stores_v2');
-        if (_raw) localBackup = JSON.parse(_raw);
-      } catch(e) {}
-
-      // Všechna pole, která Sheets nemusí mít (nová nebo uložená pouze lokálně)
+      // Pole, která Sheets nemusí mít a chceme je z lokální verze zachovat
       var MERGE_FIELDS = [
-        // Textová pole, která uživatel často edituje:
         'name','code','type','addr','tel','email',
         'vedouci','vedouciTel','obchZast',
-        // Statická/přepínaná pole:
         'wolt','gmaps','firmy','web','drive','photo',
         'zmrzHours','zmrzVydej','zmrzFoto','zmrzNote','zmrzType',
         'zmrzlina','nfc','lcd','dvere','kavovar','lednice','vahy','pos',
@@ -3391,31 +3494,48 @@ function loadFromSheets() {
         'lat','lng'
       ];
 
-      // DEBUG: dump first 3 stores from Sheets to see what API actually returns
-      try {
-        console.log('[loadFromSheets] sheetsTs=', sheetsTs, ' localTs=', localTs, ' localIsNewer?', (localTs > sheetsTs + 5000));
-        console.log('[loadFromSheets] Sample store from Sheets:', JSON.stringify(sheetsData[0]));
-        if (localBackup && localBackup[0]) console.log('[loadFromSheets] Sample store from localStorage:', JSON.stringify(localBackup[0]));
-      } catch(e) {}
+      // Lokální záloha = aktuální in-memory `stores` (může mít edity neulozene v Sheets)
+      var localById = {};
+      if (Array.isArray(stores)) {
+        stores.forEach(function(s){ if (s && s.id != null) localById[s.id] = s; });
+      }
 
       sheetsData.forEach(function(s){
         if(!s.exceptions) s.exceptions = {};
         if(!s.saints)     s.saints     = {};
         if(!s.changelog)  s.changelog  = [];
         stripNamePrefix(s);
-        // Doplň pouze chybějící foto/lat/lng z DEFAULT_STORES (nejsou v Sheets)
+
+        // ── MERGE: pokud Sheets má prázdné pole a lokální verze ne, zachovej lokální
+        var local = localById[s.id];
+        if (local) {
+          MERGE_FIELDS.forEach(function(field){
+            var sheetsVal = s[field];
+            var localVal  = local[field];
+            var sheetsEmpty = (sheetsVal === undefined || sheetsVal === null || sheetsVal === '');
+            if (field === 'hours' && Array.isArray(sheetsVal) && sheetsVal.length === 0) sheetsEmpty = true;
+            if ((field === 'saints' || field === 'exceptions') && sheetsVal && typeof sheetsVal === 'object' && Object.keys(sheetsVal).length === 0) {
+              if (localVal && typeof localVal === 'object' && Object.keys(localVal).length > 0) sheetsEmpty = true;
+            }
+            if (sheetsEmpty && localVal !== undefined && localVal !== null && localVal !== '') {
+              s[field] = localVal;
+            }
+          });
+        }
+
+        // Fallback na DEFAULT_STORES jen když ani lokál nepomohl
         var def = DEFAULT_STORES.find(function(d){ return d.id===s.id; });
         if(def) {
           if(!s.photo) s.photo = def.photo || '';
-          if(!s.lat)   s.lat   = def.lat;
-          if(!s.lng)   s.lng   = def.lng;
+          if(s.lat == null || s.lat === '') s.lat = def.lat;
+          if(s.lng == null || s.lng === '') s.lng = def.lng;
         }
       });
 
-      // Sheets = jediný zdroj pravdy. Žádný merge s localStorage.
       stores = sheetsData;
-      localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
-      localStorage.setItem('ll_saved_at', String(sheetsTs || Date.now()));
+      _savedAt = sheetsTs || Date.now();
+      safeSaveStores();
+      idbSet('saved_at', _savedAt);
       renderSidebar();
       renderLiveGrid();
       setBadge('načteno ze Sheets ✓', false);
@@ -3432,16 +3552,14 @@ function loadFromSheets() {
 // Uložení přes JSONP GET, fallback na no-cors fetch
 function saveData() {
   var ts = Date.now();
-  try {
-    localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
-    localStorage.setItem('ll_saved_at', String(ts));
-    isDirty = false;
-  } catch(e) {}
+  // Lokální uložení vždy hned (rychlé, offline cache)
+  _savedAt = ts;
+  safeSaveStores();
+  idbSet('saved_at', ts);
 
   if (USE_SHEETS && SHEETS_URL) {
     setBadge('ukládám do Sheets…', true);
     var payload = {key: SHEETS_KEY, data: {stores: stores, savedAt: ts}};
-    try { console.log('[saveData] sending payload, ts=', ts, ' first store name=', stores[0] && stores[0].name); } catch(e) {}
     fetch(SHEETS_URL, {
       method: 'POST',
       body: JSON.stringify(payload)
@@ -3449,19 +3567,25 @@ function saveData() {
     .then(function(r) { return r.json(); })
     .then(function(resp) {
       if (resp && resp.ok) {
+        // Až teď je vše skutečně uloženo
+        isDirty = false;
         setBadge('uloženo v Sheets ✓', false);
         if (typeof showToast === 'function') showToast('Uloženo v Sheets ✓', 'ok');
       } else {
-        setBadge('chyba Sheets: ' + (resp && resp.error || '?'), true);
-        if (typeof showToast === 'function') showToast('Chyba uložení do Sheets!', 'err');
+        // Sheets odmítl — drž isDirty=true, autosave to zkusí znovu za 3s
+        setBadge('chyba Sheets: ' + (resp && resp.error || '?') + ' (zkusím znovu)', true);
+        if (typeof showToast === 'function') showToast('Chyba uložení do Sheets — automaticky zkusím znovu', 'err');
       }
     })
     .catch(function(err) {
-      setBadge('chyba spojení: ' + err.message, true);
-      if (typeof showToast === 'function') showToast('Offline – uloženo jen lokálně', 'warn');
+      // Síťová chyba — drž isDirty=true
+      setBadge('offline (zkusím znovu): ' + err.message, true);
+      if (typeof showToast === 'function') showToast('Offline – automaticky zkusím znovu', 'warn');
     });
   } else {
-    setBadge('uloženo', false);
+    // Bez Sheets je lokální uložení vše
+    isDirty = false;
+    setBadge('uloženo lokálně', false);
   }
 }
 
@@ -4862,8 +4986,9 @@ function forceLoadFromSheets() {
               }
     });
     stores = sd;
-    localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
-    localStorage.setItem('ll_saved_at', String(data.savedAt || Date.now()));
+    _savedAt = data.savedAt || Date.now();
+    safeSaveStores();
+    idbSet('saved_at', _savedAt);
     renderSidebar();
     renderLiveGrid();
     setBadge('nacteno ze Sheets (' + stores.length + ')', false);
@@ -4882,7 +5007,9 @@ function forceLoadFromSheets() {
 function forceSaveToSheets() {
   if (!USE_SHEETS || !SHEETS_URL) { alert('Sheets neni nastaveno.'); return; }
   var ts = Date.now();
-  try { localStorage.setItem('ll_stores_v2', JSON.stringify(stores)); localStorage.setItem('ll_saved_at', String(ts)); } catch(e) {}
+  _savedAt = ts;
+  safeSaveStores();
+  idbSet('saved_at', ts);
   setBadge('ukladam do Sheets...', true);
   var payload = {key: SHEETS_KEY, data: {stores: stores, savedAt: ts}};
   fetch(SHEETS_URL, {method: 'POST', body: JSON.stringify(payload)})
@@ -5614,6 +5741,18 @@ function initSvatkyView() {
       o.textContent = sv.date + ' ' + sv.den + ' — ' + sv.name;
       sel.appendChild(o);
     });
+    // Pre-select the nearest upcoming holiday (today or later in the year),
+    // fall back to first if all have passed.
+    var now = new Date();
+    var todayKey = (now.getMonth()+1)*100 + now.getDate();
+    var bestKey = null, bestDiff = Infinity;
+    SAINTS.forEach(function(sv){
+      var p = sv.date.split('.');
+      var k = parseInt(p[1],10)*100 + parseInt(p[0],10);
+      var diff = k - todayKey;
+      if (diff >= 0 && diff < bestDiff) { bestDiff = diff; bestKey = sv.date; }
+    });
+    if (bestKey) sel.value = bestKey;
   }
   renderSvatkyView();
 }
@@ -6180,50 +6319,50 @@ function showToast(text, type) {
 function revertCurrentStore() {
   if (currentStoreIdx < 0) return;
   if (!confirm('Vrátit změny v této prodejně zpět na uloženou verzi?')) return;
-  try {
-    var raw = localStorage.getItem('ll_stores_v2');
-    if (raw) {
-      var saved = JSON.parse(raw);
-      var cur = stores[currentStoreIdx];
-      var match = saved.find(function(x){ return x.id === cur.id; });
-      if (match) {
-        stores[currentStoreIdx] = match;
-        if (!stores[currentStoreIdx].exceptions) stores[currentStoreIdx].exceptions = {};
-        isDirty = false;
-        setBadge('Ulozeno', false);
-        fillStoreDetail(stores[currentStoreIdx]);
-        renderSidebar();
-        showToast('Změny vráceny', 'ok');
-      }
+  idbGet('stores').then(function(saved) {
+    if (!Array.isArray(saved)) { showToast('Žádná uložená verze', 'warn'); return; }
+    var cur = stores[currentStoreIdx];
+    var match = saved.find(function(x){ return x.id === cur.id; });
+    if (match) {
+      stores[currentStoreIdx] = match;
+      if (!stores[currentStoreIdx].exceptions) stores[currentStoreIdx].exceptions = {};
+      isDirty = false;
+      setBadge('Ulozeno', false);
+      fillStoreDetail(stores[currentStoreIdx]);
+      renderSidebar();
+      showToast('Změny vráceny', 'ok');
     }
-  } catch(e) {
-    showToast('Chyba: ' + e.message, 'err');
-  }
+  }).catch(function(e){
+    showToast('Chyba: ' + (e.message||e), 'err');
+  });
 }
 
 // ─── INIT ────────────────────────────────────────────────────────
-loadData();
-
-// ─── SAFETY NET: auto-reset if stores is empty/broken ─────────────
-(function() {
-  var needsReset = false;
-  if (!Array.isArray(stores) || stores.length === 0) {
-    needsReset = true;
-  } else {
-    // Check at least one store has basic required fields
-    var hasValid = stores.some(function(s){
-      return s && typeof s.name === 'string' && s.id;
-    });
-    if (!hasValid) needsReset = true;
-  }
-  if (needsReset) {
-    console.warn('[safety] stores empty or invalid — resetting to DEFAULT_STORES');
-    stores = JSON.parse(JSON.stringify(DEFAULT_STORES));
-    stores.forEach(function(s){ if(!s.exceptions) s.exceptions={}; });
-    localStorage.setItem('ll_stores_v2', JSON.stringify(stores));
-    localStorage.setItem('ll_saved_at', String(Date.now()));
-  }
-})();
+// Asynchronní boot — počkáme na IndexedDB, pak validujeme, pak start.
+loadData()
+  .then(function(){
+    // Safety net: auto-reset pokud jsou data prázdná/rozbitá
+    var needsReset = false;
+    if (!Array.isArray(stores) || stores.length === 0) needsReset = true;
+    else if (!stores.some(function(s){ return s && typeof s.name === 'string' && s.id; })) needsReset = true;
+    if (needsReset) {
+      console.warn('[safety] stores empty or invalid — resetting to DEFAULT_STORES');
+      stores = JSON.parse(JSON.stringify(DEFAULT_STORES));
+      stores.forEach(function(s){ if(!s.exceptions) s.exceptions={}; });
+      _savedAt = Date.now();
+      safeSaveStores();
+      idbSet('saved_at', _savedAt);
+    }
+    return runDataMigration();
+  })
+  .then(function(){
+    if (typeof renderSidebar === 'function') renderSidebar();
+    if (typeof renderLiveGrid === 'function') renderLiveGrid();
+    if (USE_SHEETS && SHEETS_URL) loadFromSheets();
+  })
+  .catch(function(e){
+    console.error('[boot] init failed', e);
+  });
 
 // ─── GLOBAL ERROR DISPLAY ─────────────────────────────────────────
 window.addEventListener('error', function(e) {
@@ -6258,10 +6397,11 @@ window.addEventListener('error', function(e) {
       if (clicks >= 3) {
         clicks = 0;
         if (confirm('RESET: smazat lokální cache a znovu načíst čerstvá data ze Sheets?\n\n(Tvoje úpravy v Sheets zůstanou nedotčené. Pouze se odstraní zastaralá lokální verze a aplikace přečte aktuální stav ze Sheets.)')) {
-          localStorage.removeItem('ll_stores_v2');
-          localStorage.removeItem('ll_saved_at');
-          localStorage.removeItem('ll_migration');
-          location.reload();
+          Promise.all([
+            idbDel('stores'),
+            idbDel('saved_at'),
+            idbDel('migration_version')
+          ]).then(function(){ location.reload(); });
         }
       }
     });
@@ -6666,184 +6806,161 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
 /* ── The actual story (1080×1920) ─────────────────────────── */
 .story-canvas {
   width: 1080px; height: 1920px;
-  background: linear-gradient(180deg, #FBF7F0 0%, #F4EDDF 100%);
+  background: #FBF7F0;
   font-family: 'Bebas Neue', 'Geist', system-ui, sans-serif;
-  color: #1A1410;
+  color: #5E2F1D;
   position: relative;
   display: flex; flex-direction: column;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-/* Top decorative band */
+/* Top decorative band — monochrome */
 .sc-top-band {
-  height: 18px;
-  background: #B85032;
+  height: 14px;
+  background: #5E2F1D;
   flex-shrink: 0;
 }
-.sc-top-deco {
-  height: 4px;
-  background: repeating-linear-gradient(
-    90deg,
-    #1A1410 0 14px,
-    transparent 14px 28px
-  );
-  flex-shrink: 0;
-  opacity: .4;
-}
+.sc-top-deco { display: none; }
 
 /* Header */
 .sc-header {
-  padding: 56px 96px 28px;
+  padding: 32px 96px 16px;
   text-align: center;
   flex-shrink: 0;
 }
-.sc-brand {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 26px;
-  letter-spacing: 0.42em;
-  color: #8A3A22;
-  margin-bottom: 18px;
+.sc-logo {
+  display: flex; justify-content: center; align-items: center;
+  margin-bottom: 20px;
+}
+.sc-logo img {
+  height: 80px; object-fit: contain;
+  max-width: 100%;
 }
 .sc-divider-top {
   display: flex; align-items: center; justify-content: center;
-  gap: 14px; margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 .sc-divider-line {
-  flex: 0 0 90px; height: 1px; background: rgba(26,20,16,.3);
+  width: 200px; height: 1px; background: rgba(94,47,29,.35);
 }
-.sc-divider-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #B85032;
-}
+.sc-divider-dot { display: none; }
 .sc-headline {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 192px;
-  line-height: 0.86;
-  letter-spacing: 0.02em;
-  color: #1A1410;
-  margin-bottom: 22px;
+  font-size: 100px;
+  line-height: 0.92;
+  letter-spacing: 0.04em;
+  color: #5E2F1D;
+  margin-bottom: 12px;
+  white-space: nowrap;
 }
-.sc-headline span { display: block; }
-.sc-headline .accent { color: #B85032; }
+.sc-headline span { display: inline; }
+.sc-headline .accent { color: #5E2F1D; }
 .sc-date {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 56px;
-  color: #1A1410;
-  letter-spacing: 0.04em;
+  font-size: 38px;
+  line-height: 1;
+  color: #5E2F1D;
+  letter-spacing: 0.06em;
   margin-bottom: 4px;
 }
 .sc-day {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 32px;
-  color: #8B7A65;
-  letter-spacing: 0.14em;
+  font-size: 22px;
+  line-height: 1;
+  color: #9B7E6A;
+  letter-spacing: 0.18em;
 }
 
-/* Sub-banner */
-.sc-subbanner {
-  margin: 22px 96px 0;
-  padding: 16px 24px;
-  background: rgba(184,80,50,.08);
-  border: 1px solid #EDC7AE;
-  border-radius: 14px;
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  flex-shrink: 0;
-}
-.sc-subbanner-icon { font-size: 22px; }
-.sc-subbanner-text {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 28px;
-  color: #8A3A22;
-  letter-spacing: 0.12em;
-}
+/* Sub-banner — hidden in monochrome design */
+.sc-subbanner { display: none; }
 
 /* Stores list */
 .sc-stores {
   flex: 1;
-  padding: 28px 96px 16px;
+  padding: 18px 96px 18px;
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-.sc-stores-header {
-  display: flex; justify-content: space-between;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #1A1410;
-  margin-bottom: 6px;
-  font-family: 'Geist', sans-serif;
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.18em;
-  color: #8B7A65;
-  flex-shrink: 0;
+.sc-stores-grid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
+.sc-stores-col {
+  display: flex; flex-direction: column;
+  flex: 1;
+}
+.sc-stores-divider { display: none; }
 
 .sc-store {
-  display: flex; justify-content: space-between; align-items: baseline;
-  padding: 11px 0;
-  border-bottom: 1px solid rgba(26,20,16,.08);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(94,47,29,.1);
+  min-height: 0;
 }
 .sc-store:last-child { border-bottom: none; }
 
 .sc-store-name {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 38px;
-  color: #1A1410;
-  letter-spacing: 0.02em;
-  flex: 1; padding-right: 14px;
+  font-size: 40px;
   line-height: 1;
+  color: #5E2F1D;
+  letter-spacing: 0.02em;
+  min-width: 0;
 }
 .sc-store-hours {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 38px;
-  color: #1A1410;
+  font-size: 40px;
+  line-height: 1;
+  color: #5E2F1D;
   letter-spacing: 0.04em;
   white-space: nowrap;
-  line-height: 1;
 }
-.sc-store.is-closed .sc-store-name { color: #8B7A65; }
+.sc-store.is-closed .sc-store-name { color: #9B7E6A; }
 .sc-store.is-closed .sc-store-hours {
-  color: #B83A2E;
+  color: #5E2F1D;
   font-size: 30px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.22em;
 }
 .sc-store.is-fallback .sc-store-hours {
-  color: #4A3D30;
+  color: #7A5239;
 }
-
-/* Compact mode for many stores */
-.story-canvas.is-compact .sc-store { padding: 8px 0; }
-.story-canvas.is-compact .sc-store-name { font-size: 32px; }
-.story-canvas.is-compact .sc-store-hours { font-size: 32px; }
-.story-canvas.is-compact .sc-store.is-closed .sc-store-hours { font-size: 26px; }
 
 /* Footer */
 .sc-footer {
-  padding: 18px 96px 40px;
+  padding: 12px 96px 26px;
   text-align: center;
   flex-shrink: 0;
 }
 .sc-footer-line {
-  width: 120px; height: 1px;
-  background: rgba(26,20,16,.25);
-  margin: 0 auto 16px;
+  width: 160px; height: 1px;
+  background: rgba(94,47,29,.3);
+  margin: 0 auto 12px;
 }
 .sc-footer-web {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 38px;
-  color: #1A1410;
-  letter-spacing: 0.16em;
-  margin-bottom: 8px;
+  font-size: 30px;
+  line-height: 1;
+  color: #5E2F1D;
+  letter-spacing: 0.18em;
 }
-.sc-footer-note {
-  font-family: 'Geist', sans-serif;
-  font-size: 13px; color: #8B7A65;
-  letter-spacing: 0.02em;
-}
+.sc-footer-note { display: none; }
 
-/* Bottom decorative band */
+/* Bottom decorative band — monochrome */
 .sc-bot-band {
   height: 8px;
-  background: #B85032;
+  background: #5E2F1D;
+  flex-shrink: 0;
+}
+
+/* Bottom decorative band — monochrome */
+.sc-bot-band {
+  height: 8px;
+  background: #5E2F1D;
   flex-shrink: 0;
 }
 
@@ -6901,6 +7018,359 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
 <!-- Hidden full-size canvases for PNG export -->
 <div id="stories-export-stage"></div>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     YEAR OVERVIEW — interní matrix prodejna × svátek
+     ═══════════════════════════════════════════════════════════════ -->
+<style>
+#yo-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 14, 10, 0.78);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: none;
+  align-items: flex-start; justify-content: center;
+  padding: 24px 16px; overflow-y: auto;
+}
+#yo-overlay.active { display: flex; }
+#yo-modal {
+  background: var(--canvas);
+  width: 100%; max-width: 1400px;
+  border-radius: var(--r3);
+  box-shadow: var(--sh-lg);
+  overflow: hidden;
+  margin: auto 0;
+}
+.yo-head {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--paper);
+  flex-wrap: wrap; gap: 12px;
+}
+.yo-head-title {
+  font-family: var(--display);
+  font-size: 22px; font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.yo-head-title small {
+  display: block; font-family: var(--font); font-size: 11px;
+  color: var(--ink-3); font-weight: 400; margin-top: 2px;
+}
+.yo-actions { display: flex; gap: 8px; }
+.yo-btn {
+  padding: 9px 14px;
+  font-family: var(--font); font-weight: 600; font-size: 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--line-strong);
+  cursor: pointer; transition: all .15s;
+  background: var(--paper); color: var(--ink-2);
+}
+.yo-btn:hover { background: var(--paper-2); }
+.yo-btn-primary { background: #5E2F1D; color: white; border-color: #5E2F1D; }
+.yo-btn-primary:hover { background: #4A2516; }
+.yo-btn-close {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: transparent; border: 1px solid var(--line);
+  cursor: pointer; font-size: 20px; color: var(--ink-2);
+  display: flex; align-items: center; justify-content: center;
+}
+.yo-btn-close:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+.yo-controls {
+  padding: 12px 28px; background: var(--paper-2);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  font-size: 12px;
+}
+.yo-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; color: var(--ink-2); }
+.yo-controls label input { accent-color: var(--accent); }
+.yo-legend { display: flex; gap: 14px; margin-left: auto; flex-wrap: wrap; }
+.yo-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-2); }
+.yo-legend-sw { width: 14px; height: 14px; border-radius: 4px; }
+
+.yo-body { padding: 18px 24px; overflow: auto; max-height: 70vh; }
+
+.yo-table {
+  border-collapse: collapse;
+  font-family: var(--font);
+  font-size: 12px;
+  background: var(--paper);
+  width: 100%;
+}
+.yo-table th, .yo-table td {
+  border: 1px solid var(--line-strong);
+  padding: 8px 10px;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.yo-table thead th {
+  background: #5E2F1D;
+  color: white;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  position: sticky; top: 0;
+  z-index: 2;
+}
+.yo-table thead th .yo-th-date {
+  display: block;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+.yo-table thead th .yo-th-name {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+.yo-table thead th .yo-th-day {
+  display: block;
+  font-size: 10px;
+  opacity: 0.7;
+  margin-top: 1px;
+}
+.yo-table tbody td.yo-store {
+  background: var(--paper-2);
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink);
+  position: sticky; left: 0;
+  z-index: 1;
+  border-right: 2px solid #5E2F1D;
+  min-width: 180px;
+}
+.yo-cell-set { background: #fff; color: var(--ink); font-weight: 600; }
+.yo-cell-fallback { background: #FBF7F0; color: var(--ink-2); font-weight: 400; font-style: italic; }
+.yo-cell-closed {
+  background: #FBE8E0; color: #8A2A1A; font-weight: 700;
+  font-size: 10px; letter-spacing: 0.08em;
+}
+.yo-cell-empty { background: var(--paper-3); color: var(--ink-4); }
+
+.yo-table tbody tr:hover td { background: #F4ECE0; }
+.yo-table tbody tr:hover td.yo-store { background: #EEE1CC; }
+.yo-table tbody tr:hover td.yo-cell-closed { background: #F4D6CC; }
+
+.yo-empty {
+  padding: 60px 30px; text-align: center;
+  color: var(--ink-3); font-size: 13px;
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #yo-overlay, #yo-overlay * { visibility: visible; }
+  #yo-overlay {
+    position: absolute; inset: 0;
+    background: white; padding: 0;
+    overflow: visible;
+  }
+  #yo-modal { box-shadow: none; max-width: 100%; }
+  .yo-head, .yo-controls, .yo-actions, .yo-btn-close { display: none !important; }
+  .yo-body { padding: 0; max-height: none; overflow: visible; }
+  .yo-table thead th { background: #5E2F1D !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .yo-cell-closed { background: #FBE8E0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+
+<div id="yo-overlay" onclick="if(event.target===this) closeYearOverview()">
+  <div id="yo-modal">
+    <div class="yo-head">
+      <div class="yo-head-title">
+        Roční přehled státních svátků
+        <small>Otevírací doby všech prodejen pro všechny svátky <span id="yo-year-label"></span></small>
+      </div>
+      <div class="yo-actions">
+        <button class="yo-btn yo-btn-primary" onclick="copyYearOverview()">📋 Kopírovat tabulku</button>
+        <button class="yo-btn" onclick="window.print()">🖨 Tisk A4</button>
+        <button class="yo-btn-close" onclick="closeYearOverview()" aria-label="Zavřít">×</button>
+      </div>
+    </div>
+    <div class="yo-controls">
+      <label><input type="checkbox" id="yo-opt-fallback" checked onchange="renderYearOverview()"> Zobrazit běžnou otev. dobu, kde není svátek nastaven</label>
+      <label><input type="checkbox" id="yo-opt-onlyset" onchange="renderYearOverview()"> Pouze prodejny s alespoň jedním nastaveným svátkem</label>
+      <div class="yo-legend">
+        <span class="yo-legend-item"><span class="yo-legend-sw" style="background:#fff;border:1px solid var(--line-strong);"></span>Nastaveno</span>
+        <span class="yo-legend-item"><span class="yo-legend-sw" style="background:#FBF7F0;border:1px solid var(--line-strong);"></span>Běžná doba (fallback)</span>
+        <span class="yo-legend-item"><span class="yo-legend-sw" style="background:#FBE8E0;"></span>Zavřeno</span>
+        <span class="yo-legend-item"><span class="yo-legend-sw" style="background:var(--paper-3);"></span>Nenastaveno</span>
+      </div>
+    </div>
+    <div class="yo-body" id="yo-body"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  window.openYearOverview = function() {
+    var ov = document.getElementById('yo-overlay');
+    if (!ov) return;
+    var lbl = document.getElementById('yo-year-label');
+    if (lbl) lbl.textContent = new Date().getFullYear();
+    ov.classList.add('active');
+    renderYearOverview();
+  };
+  window.closeYearOverview = function() {
+    var ov = document.getElementById('yo-overlay');
+    if (ov) ov.classList.remove('active');
+  };
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      var ov = document.getElementById('yo-overlay');
+      if (ov && ov.classList.contains('active')) closeYearOverview();
+    }
+  });
+
+  function escHtml(str) {
+    return String(str==null?'':str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Returns {hours, kind} for a store on a given saint date
+  // kind: 'set' | 'fallback' | 'closed' | 'none'
+  function cellFor(s, key, fallback) {
+    var sv = SAINTS.find(function(x){ return x.date === key; });
+    if (!sv) return { hours: '', kind: 'none' };
+    var dayIdx = DAY_NAMES_IDX[sv.den];
+    var eff = getEffectiveHoursForSaint(s, key);
+    if (eff === 'ZAVŘENO') return { hours: 'ZAVŘENO', kind: 'closed' };
+    if (eff) return { hours: eff, kind: 'set' };
+    if (!fallback) return { hours: '—', kind: 'none' };
+    var stdH = (s.hours && s.hours[dayIdx]) || '';
+    if (!stdH || stdH === 'ZAVŘENO') return { hours: 'ZAVŘENO', kind: 'closed' };
+    return { hours: stdH, kind: 'fallback' };
+  }
+
+  // Sort saints chronologically with upcoming first
+  function getSortedSaints() {
+    var now = new Date();
+    var todayKey = (now.getMonth()+1)*100 + now.getDate();
+    return SAINTS.slice().sort(function(a,b){
+      var pa = a.date.split('.'), pb = b.date.split('.');
+      var ka = parseInt(pa[1])*100 + parseInt(pa[0]);
+      var kb = parseInt(pb[1])*100 + parseInt(pb[0]);
+      var fa = ka >= todayKey ? 0 : 1;
+      var fb = kb >= todayKey ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      return ka - kb;
+    });
+  }
+
+  window.renderYearOverview = function() {
+    var body = document.getElementById('yo-body');
+    if (!body) return;
+    var fallback = document.getElementById('yo-opt-fallback').checked;
+    var onlySet = document.getElementById('yo-opt-onlyset').checked;
+
+    var saints = getSortedSaints();
+
+    var rowStores = stores.slice();
+    if (onlySet) {
+      rowStores = rowStores.filter(function(s){
+        return saints.some(function(sv){
+          var eff = getEffectiveHoursForSaint(s, sv.date);
+          return !!eff;
+        });
+      });
+    }
+
+    if (rowStores.length === 0 || saints.length === 0) {
+      body.innerHTML = '<div class="yo-empty">Žádná data k zobrazení.</div>';
+      return;
+    }
+
+    var head = '<thead><tr><th class="yo-store" style="text-align:left;">Prodejna</th>';
+    saints.forEach(function(sv){
+      head += '<th>'
+        + '<span class="yo-th-date">'+sv.date+'</span>'
+        + '<span class="yo-th-name">'+escHtml(sv.name)+'</span>'
+        + '<span class="yo-th-day">'+escHtml(sv.den)+'</span>'
+        + '</th>';
+    });
+    head += '</tr></thead>';
+
+    var bodyHtml = '<tbody>';
+    rowStores.forEach(function(s){
+      bodyHtml += '<tr><td class="yo-store">'+escHtml(s.name)+'</td>';
+      saints.forEach(function(sv){
+        var c = cellFor(s, sv.date, fallback);
+        var cls = 'yo-cell-' + c.kind;
+        if (c.kind === 'none') {
+          bodyHtml += '<td class="'+cls+'">—</td>';
+        } else {
+          bodyHtml += '<td class="'+cls+'">'+escHtml(c.hours)+'</td>';
+        }
+      });
+      bodyHtml += '</tr>';
+    });
+    bodyHtml += '</tbody>';
+
+    body.innerHTML = '<table class="yo-table">' + head + bodyHtml + '</table>';
+  };
+
+  // Copy as TSV (Excel/Google Sheets friendly) + plain text
+  window.copyYearOverview = function() {
+    var fallback = document.getElementById('yo-opt-fallback').checked;
+    var onlySet = document.getElementById('yo-opt-onlyset').checked;
+    var saints = getSortedSaints();
+    var rowStores = stores.slice();
+    if (onlySet) {
+      rowStores = rowStores.filter(function(s){
+        return saints.some(function(sv){ return !!getEffectiveHoursForSaint(s, sv.date); });
+      });
+    }
+    var headerRow = ['Prodejna'].concat(saints.map(function(sv){
+      return sv.date + ' ' + sv.name + ' (' + sv.den + ')';
+    }));
+    var rows = [headerRow];
+    rowStores.forEach(function(s){
+      var r = [s.name];
+      saints.forEach(function(sv){
+        var c = cellFor(s, sv.date, fallback);
+        r.push(c.kind === 'none' ? '' : c.hours);
+      });
+      rows.push(r);
+    });
+    var tsv = rows.map(function(r){ return r.join('\t'); }).join('\n');
+
+    var btn = event && event.target ? event.target.closest('button') : null;
+    var orig = btn ? btn.textContent : '';
+    function done(ok) {
+      if (!btn) return;
+      btn.textContent = ok ? '✓ Zkopírováno' : '✗ Nepovedlo se';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(tsv).then(function(){ done(true); }).catch(function(){
+        fallbackCopy(tsv, done);
+      });
+    } else {
+      fallbackCopy(tsv, done);
+    }
+  };
+
+  function fallbackCopy(text, done) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      done(ok);
+    } catch(e) { done(false); }
+  }
+})();
+</script>
+
 <script>
 (function(){
   // ── Czech month names (genitive case for date format) ─────────
@@ -6934,6 +7404,54 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
     return { hours: stdH, kind: 'fallback' };
   }
 
+  // ── Post-render safety: if columns overflow, gradually shrink rows ──
+  function autoFitStoryNode(canvasNode) {
+    if (!canvasNode) return;
+    var storesEl = canvasNode.querySelector('.sc-stores');
+    var grid = canvasNode.querySelector('.sc-stores-grid');
+    if (!storesEl || !grid) return;
+    void storesEl.offsetHeight; // force layout
+
+    function maxColOverflow() {
+      var cols = canvasNode.querySelectorAll('.sc-stores-col');
+      var maxOver = 0;
+      cols.forEach(function(c){
+        var over = c.scrollHeight - storesEl.clientHeight;
+        if (over > maxOver) maxOver = over;
+      });
+      return maxOver;
+    }
+
+    if (maxColOverflow() <= 1) return; // already fits
+
+    var nameEls = canvasNode.querySelectorAll('.sc-store-name');
+    var hoursEls = canvasNode.querySelectorAll('.sc-store-hours');
+    var rowEls = canvasNode.querySelectorAll('.sc-store');
+    var isSingle = canvasNode.classList.contains('is-single-col');
+
+    // Read current sizes from computed style of the first row (if exists)
+    var currName = nameEls[0] ? parseFloat(getComputedStyle(nameEls[0]).fontSize) : (isSingle ? 40 : 34);
+    var currHours = hoursEls[0] ? parseFloat(getComputedStyle(hoursEls[0]).fontSize) : (isSingle ? 42 : 36);
+    var currPad = rowEls[0] ? parseFloat(getComputedStyle(rowEls[0]).paddingTop) : (isSingle ? 18 : 14);
+
+    var safety = 24;
+    while (maxColOverflow() > 1 && safety-- > 0) {
+      currName = Math.max(20, currName - 1);
+      currHours = Math.max(20, currHours - 1);
+      currPad = Math.max(6, currPad - 0.5);
+      nameEls.forEach(function(el){ el.style.fontSize = currName + 'px'; });
+      hoursEls.forEach(function(el){ el.style.fontSize = currHours + 'px'; });
+      rowEls.forEach(function(el){ el.style.padding = currPad + 'px 0'; });
+      void storesEl.offsetHeight;
+    }
+  }
+
+  // ── Get logo data URL from existing DOM (used in print posters too) ──
+  function getLogoDataUrl() {
+    var img = document.querySelector('img[src^="data:image/svg"]');
+    return img ? img.src : '';
+  }
+
   // ── Build the 1080×1920 story DOM ──────────────────────────────
   function buildStoryHTML(key) {
     var sv = SAINTS.find(function(x){ return x.date === key; });
@@ -6952,11 +7470,11 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
       rows.push({ name: s.name, hours: h.hours, kind: h.kind });
     });
 
-    var compactClass = rows.length > 16 ? ' is-compact' : '';
     var dayLabel = sv.den.toUpperCase();
     var dateText = fmtCzechDate(sv.date);
+    var logoSrc = getLogoDataUrl();
 
-    var rowsHtml = rows.map(function(r){
+    function rowHtml(r) {
       var cls = 'sc-store';
       if (r.kind === 'closed') cls += ' is-closed';
       else if (r.kind === 'fallback') cls += ' is-fallback';
@@ -6964,34 +7482,33 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
         + '<div class="sc-store-name">'+escHtml(r.name)+'</div>'
         + '<div class="sc-store-hours">'+escHtml(r.hours)+'</div>'
         + '</div>';
-    }).join('');
+    }
 
-    return '<div class="story-canvas'+compactClass+'">'
+    var gridHtml = '<div class="sc-stores-grid">'
+      + '<div class="sc-stores-col">' + rows.map(rowHtml).join('') + '</div>'
+      + '</div>';
+
+    var headerTop = logoSrc
+      ? '<div class="sc-logo"><img src="'+logoSrc+'" alt="Liberské lahůdky"></div>'
+      : '<div class="sc-brand" style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;letter-spacing:.42em;color:#5E2F1D;margin-bottom:18px;">Liberské lahůdky</div>';
+
+    return '<div class="story-canvas">'
       + '<div class="sc-top-band"></div>'
-      + '<div class="sc-top-deco"></div>'
       + '<div class="sc-header">'
-        + '<div class="sc-brand">Liberské lahůdky</div>'
+        + headerTop
         + '<div class="sc-divider-top">'
           + '<div class="sc-divider-line"></div>'
-          + '<div class="sc-divider-dot"></div>'
-          + '<div class="sc-divider-line"></div>'
         + '</div>'
-        + '<div class="sc-headline"><span>Státní</span><span class="accent">svátek</span></div>'
+        + '<div class="sc-headline"><span>Státní svátek</span></div>'
         + '<div class="sc-date">'+dateText+'</div>'
         + '<div class="sc-day">'+escHtml(sv.den)+' • '+escHtml(sv.name)+'</div>'
       + '</div>'
-      + '<div class="sc-subbanner">'
-        + '<span class="sc-subbanner-icon">🕒</span>'
-        + '<span class="sc-subbanner-text">Otevírací doba našich prodejen</span>'
-      + '</div>'
       + '<div class="sc-stores">'
-        + '<div class="sc-stores-header"><span>Prodejna</span><span>Otevřeno</span></div>'
-        + rowsHtml
+        + gridHtml
       + '</div>'
       + '<div class="sc-footer">'
         + '<div class="sc-footer-line"></div>'
         + '<div class="sc-footer-web">liberskelahudky.cz</div>'
-        + '<div class="sc-footer-note">Děkujeme, že nakupujete u nás 🤍</div>'
       + '</div>'
       + '<div class="sc-bot-band"></div>'
     + '</div>';
@@ -7088,6 +7605,12 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
     html += '</div>';
     preview.innerHTML = html;
     stage.innerHTML = stageHtml;
+
+    // Run auto-fit safety on every rendered story (preview + export)
+    requestAnimationFrame(function(){
+      preview.querySelectorAll('.story-canvas').forEach(autoFitStoryNode);
+      stage.querySelectorAll('.story-canvas').forEach(autoFitStoryNode);
+    });
   };
 
   // ── PNG export ─────────────────────────────────────────────────
