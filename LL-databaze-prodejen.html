@@ -3418,38 +3418,14 @@ function _hydrateStores() {
 }
 
 function runDataMigration() {
-  // Migrace dat — držena v IDB pod klíčem 'migration_version'
+  // Migrace v3 probehla u vsech - hardcoded data odstranena, aby neprepisovala aktualni udaje.
+  // Sheets jsou jediny zdroj pravdy; verze se jen zapise, data se nemeni.
   return idbGet('migration_version').then(function(done) {
     var MIGRATION_VER = 3;
     if ((done || 0) >= MIGRATION_VER) return;
-    var official = {"1": {"code": "64", "name": "64. Florenc – Na Poříčí", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "2": {"code": "53", "name": "53. Vodičkova", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00, So 10:00-17:00"}, "3": {"code": "68", "name": "68. Háje", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-14:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00"}, "4": {"code": "69", "name": "69. Arkády Pankrác", "hours": ["7:00-21:00", "7:00-21:00", "7:00-21:00", "7:00-21:00", "7:00-21:00", "9:00-21:00", "9:00-21:00"], "zmrzHours": ""}, "5": {"code": "66", "name": "66. Poliklinika Modřany", "hours": ["7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-14:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": ""}, "6": {"code": "70", "name": "70. DBK Olbrachtova", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-14:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-18:00"}, "7": {"code": "65", "name": "65. Poliklinika Budějovická", "hours": ["6:30-18:00", "6:30-18:00", "6:30-18:00", "6:30-18:00", "6:30-17:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": "Po-Čt 10:00-17:00, Pá 10:00-16:00"}, "8": {"code": "60", "name": "60. Krč – Thomayerova", "hours": ["6:15-17:00", "6:15-17:00", "6:15-17:00", "6:15-17:00", "6:15-17:00", "8:00-17:00", "9:00-16:00"], "zmrzHours": "Po-So 10:00-16:00, Ne 10:00-15:00"}, "9": {"code": "52", "name": "52. Letná – Strossmayerovo nám.", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "10": {"code": "73", "name": "73. Holešovice", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 9:00-17:00"}, "11": {"code": "71", "name": "71. Dejvice", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "12": {"code": "51", "name": "51. Palmovka", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "13": {"code": "50", "name": "50. Anděl – Ostrovského", "hours": ["6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "6:30-19:00", "8:00-18:00", "8:00-17:00"], "zmrzHours": "Po-Pá 10:00-18:00, So 10:00-17:00, Ne 10:00-16:00"}, "14": {"code": "51", "name": "51. Palmovka Cukrárna", "hours": ["8:00-19:00", "8:00-19:00", "8:00-19:00", "8:00-19:00", "8:00-19:00", "9:00-18:00", "9:00-18:00"], "zmrzHours": "Po-Pá 10:00-18:00, So-Ne 10:00-17:00"}, "15": {"code": "67", "name": "67. Ruzyně", "hours": ["6:30-17:00", "6:30-17:00", "6:30-17:00", "6:30-17:00", "6:30-16:00", "8:00-12:00", "ZAVŘENO"], "zmrzHours": "Po-Čt 10:00-16:00, Pá 10:00-15:00, So 10:00-11:00"}, "16": {"code": "72", "name": "72. Poliklinika Vysočany", "hours": ["7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-17:00", "7:00-16:00", "ZAVŘENO", "ZAVŘENO"], "zmrzHours": ""}, "17": {"code": "58", "name": "58. Jesenice", "hours": ["6:00-17:30", "6:00-17:30", "6:00-17:30", "6:00-17:30", "6:00-17:30", "7:00-11:00", "ZAVŘENO"], "zmrzHours": ""}, "18": {"code": "57", "name": "57. Libeř", "hours": ["7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-12:00", "ZAVŘENO"], "zmrzHours": "Po-Pá 10:00-17:00, So 10:00-11:00"}, "19": {"code": "74", "name": "74. České Budějovice", "hours": ["7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "7:00-18:30", "8:00-17:00", "8:00-17:00"], "zmrzHours": "Po-Pá 10:00-17:00, So-Ne 10:00-14:00"}, "20": {"code": "75", "name": "75. I.P. Pavlova", "hours": ["6:30-19:30", "6:30-19:30", "6:30-19:30", "6:30-19:30", "6:30-19:30", "8:00-19:00", "8:00-19:00"], "zmrzHours": "Po-Ne 10:00-18:00"}, "21": {"code": "76", "name": "76. OC Nový Smíchov", "hours": ["7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "7:00-19:00", "8:00-19:00", "8:00-19:00"], "zmrzHours": ""}, "22": {"code": "54", "name": "54. Hlavní nádraží", "hours": ["6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00", "6:00-23:00"], "zmrzHours": "Po-Ne 10:00-22:00"}};
-    var changed = false;
-    stores.forEach(function(s) {
-      var u = official[s.id];
-      if (!u) return;
-      if (u.addr)      s.addr      = u.addr;
-      if (u.tel)       s.tel       = u.tel;
-      if (u.email)     s.email     = u.email;
-      if (u.hours)     s.hours     = u.hours;
-      if (u.code)      s.code      = u.code;
-      if (u.name)      s.name      = u.name;
-      if (u.zmrzHours !== undefined) s.zmrzHours = u.zmrzHours;
-      changed = true;
-    });
-    if (changed) {
-      safeSaveStores();
-      idbSet('saved_at', Date.now());
-      idbSet('migration_version', MIGRATION_VER);
-      isDirty = true;
-      setBadge('data aktualizovana - uloz do Sheets!', true);
-    } else {
-      idbSet('migration_version', MIGRATION_VER);
-    }
+    return idbSet('migration_version', MIGRATION_VER);
   });
 }
-
-
-// JSONP — funguje z file:// bez CORS problémů
 function loadFromSheets() {
   setBadge('načítám ze Sheets…', true);
   var cbName = 'll_cb_' + Date.now();
