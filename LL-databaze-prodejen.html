@@ -4,13 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#FBF7F0">
-<title>Databáze prodejen — Libeřské lahůdky v40</title>
+<title>Databáze prodejen — Libeřské lahůdky v43</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
-   ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v40                      ║
+   ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v43                      ║
+   ║  NEW: prazdninova otevir. doba + fix TV syntax + kiosek        ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -2608,9 +2609,33 @@ input.sb-search:focus {
 
       <!-- TAB: OTEVÍRACÍ DOBA -->
       <div class="tab-panel" id="tp-hodiny">
+        <!-- Přepínač běžná / prázdninová -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <button id="hmode-normal" class="btn" onclick="setHoursMode('normal')" style="flex:1;">📅 Běžná doba</button>
+          <button id="hmode-holiday" class="btn btn-ghost" onclick="setHoursMode('holiday')" style="flex:1;">🏖 Prázdninová doba</button>
+        </div>
+
+        <!-- Aktivace prázdninové doby -->
+        <div id="holiday-activate-box" style="display:none;background:var(--soon-bg,#fff4df);border:1px solid #f0d080;border-radius:var(--r2);padding:12px 16px;margin-bottom:16px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--soon,#7a4a00);">
+            <input type="checkbox" id="f-holiday-active" onchange="toggleHolidayActive()" style="width:18px;height:18px;accent-color:#7a4a00;">
+            Prázdninová doba je právě aktivní (zobrazí se v živém přehledu místo běžné)
+          </label>
+          <div style="display:flex;gap:12px;margin-top:10px;">
+            <div class="field" style="flex:1;">
+              <label class="field-label">Platí od</label>
+              <input type="date" class="field-input" id="f-holiday-from" onchange="onFieldChange()">
+            </div>
+            <div class="field" style="flex:1;">
+              <label class="field-label">Platí do</label>
+              <input type="date" class="field-input" id="f-holiday-to" onchange="onFieldChange()">
+            </div>
+          </div>
+        </div>
+
         <div class="field-group">
           <div class="field-group-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <span>Otevírací doba</span>
+            <span id="hours-title">Otevírací doba</span>
             <div class="hu-tools">
               <button class="btn btn-ghost" onclick="heCopyRange(0,4)">Po–Pá stejně</button>
               <button class="btn btn-ghost" onclick="heCopyRange(5,6)">So–Ne stejně</button>
@@ -2735,6 +2760,14 @@ input.sb-search:focus {
 
       <!-- TAB: TV / RÁDIO -->
       <div class="tab-panel" id="tp-tvradia">
+
+        <!-- SPRÁVA JEDNOTLIVÝCH TV -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);">Televize na prodejně</div>
+          <button class="btn btn-red" onclick="addTV()">+ Přidat TV</button>
+        </div>
+        <div id="tv-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;"></div>
+
         <div class="section-notice" style="margin-bottom:18px;">
           Zadej offsety pro tuto prodejnu — kolik minut před/po otevírací době se mají zapnout TV a rádia. Kalkulačka pak ukáže přesné časy pro každý den.
         </div>
@@ -3649,22 +3682,35 @@ function getStoreStatus(s) {
     }
   }
 
-  var raw = (s.hours && s.hours[todayIdx]) || '';
-  if (!raw || raw === 'ZAVŘENO' || raw === '') return { status: 'closed', label: 'Zavřeno', hours: raw || '—' };
+  // Prázdninová doba — pokud je aktivní a v platnosti, použij ji místo běžné
+  var activeHours = s.hours;
+  var holidayTag = '';
+  if (s.holidayActive && s.hoursHoliday) {
+    var inRange = true;
+    if (s.holidayFrom || s.holidayTo) {
+      var todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+      if (s.holidayFrom && todayStr < s.holidayFrom) inRange = false;
+      if (s.holidayTo && todayStr > s.holidayTo) inRange = false;
+    }
+    if (inRange) { activeHours = s.hoursHoliday; holidayTag = ' (prázdniny)'; }
+  }
+
+  var raw = (activeHours && activeHours[todayIdx]) || '';
+  if (!raw || raw === 'ZAVŘENO' || raw === '') return { status: 'closed', label: 'Zavřeno'+holidayTag, hours: raw || '—' };
   var match = raw.replace(/\s/g,'').match(/(\d+)[:\.]?(\d*)-(\d+)[:\.]?(\d*)/);
   if (!match) return { status: 'unknown', label: '?', hours: raw };
   var fromM = parseInt(match[1])*60 + (parseInt(match[2]||0));
   var toM   = parseInt(match[3])*60 + (parseInt(match[4]||0));
   if (cur >= fromM && cur < toM) {
     var left = toM - cur;
-    if (left <= 30) return { status: 'soon', label: 'Zavírá za '+left+' min', hours: raw };
-    return { status: 'open', label: 'Otevřeno', hours: raw };
+    if (left <= 30) return { status: 'soon', label: 'Zavírá za '+left+' min'+holidayTag, hours: raw };
+    return { status: 'open', label: 'Otevřeno'+holidayTag, hours: raw };
   }
   if (cur < fromM) {
     var wait = fromM - cur;
-    if (wait <= 60) return { status: 'soon', label: 'Otevře za '+wait+' min', hours: raw };
+    if (wait <= 60) return { status: 'soon', label: 'Otevře za '+wait+' min'+holidayTag, hours: raw };
   }
-  return { status: 'closed', label: 'Zavřeno', hours: raw };
+  return { status: 'closed', label: 'Zavřeno'+holidayTag, hours: raw };
 }
 
 function toMinutes(t) {
@@ -4128,7 +4174,14 @@ function fillStoreDetail(s) {
   // Poznámky
   setV('f-notes', s.notes||'');
 
-  // Hours editor
+  // Hours editor — reset na běžnou dobu při otevření prodejny
+  _hoursMode = 'normal';
+  setC('f-holiday-active', !!s.holidayActive);
+  setV('f-holiday-from', s.holidayFrom||'');
+  setV('f-holiday-to', s.holidayTo||'');
+  var _bn=document.getElementById('hmode-normal'), _bh=document.getElementById('hmode-holiday'), _box=document.getElementById('holiday-activate-box'), _ht=document.getElementById('hours-title');
+  if(_bn) _bn.className='btn'; if(_bh) _bh.className='btn btn-ghost';
+  if(_box) _box.style.display='none'; if(_ht) _ht.textContent='Otevírací doba';
   buildHoursEditor(s);
   renderHoursDisplay(s);
 
@@ -4257,14 +4310,17 @@ function saveCurrentStore() {
   s.zmrzFoto = getV('f-zmrz-foto'); s.zmrzNote = getV('f-zmrz-note');
   s.notes = getV('f-notes');
   s.techNotes = getV('f-tech-notes');
+  s.holidayFrom = getV('f-holiday-from');
+  s.holidayTo = getV('f-holiday-to');
 
-  // Hours from editor
+  // Hours from editor — zapisuj do aktivní sady (běžná / prázdninová)
+  var targetHours = (_hoursMode === 'holiday') ? (s.hoursHoliday = s.hoursHoliday || ['','','','','','','']) : s.hours;
   DAYS.forEach(function(d,i) {
     var f=document.getElementById('hef-'+i), t=document.getElementById('het-'+i);
     var cl=document.getElementById('hecl-'+i);
     if (!f) return;
-    if (cl && cl.classList.contains('on')) { s.hours[i]='ZAVŘENO'; }
-    else { s.hours[i] = (f.value&&t.value) ? f.value+'-'+t.value : ''; }
+    if (cl && cl.classList.contains('on')) { targetHours[i]='ZAVŘENO'; }
+    else { targetHours[i] = (f.value&&t.value) ? f.value+'-'+t.value : ''; }
   });
 
   // Log change
@@ -4302,17 +4358,48 @@ function deleteCurrentStore() {
 }
 
 // ─── HOURS EDITOR (unified display+editor) ──────────────────────
+var _hoursMode = 'normal'; // 'normal' | 'holiday'
+
+function setHoursMode(mode) {
+  _hoursMode = mode;
+  var bn = document.getElementById('hmode-normal');
+  var bh = document.getElementById('hmode-holiday');
+  var box = document.getElementById('holiday-activate-box');
+  var title = document.getElementById('hours-title');
+  if (mode === 'holiday') {
+    bn.className = 'btn btn-ghost'; bh.className = 'btn';
+    if (box) box.style.display = 'block';
+    if (title) title.textContent = '🏖 Prázdninová otevírací doba';
+  } else {
+    bn.className = 'btn'; bh.className = 'btn btn-ghost';
+    if (box) box.style.display = 'none';
+    if (title) title.textContent = 'Otevírací doba';
+  }
+  if (currentStoreIdx >= 0) buildHoursEditor(stores[currentStoreIdx]);
+}
+
+function toggleHolidayActive() {
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  s.holidayActive = document.getElementById('f-holiday-active').checked;
+  markDirty();
+  renderSidebar();
+  renderLiveGrid();
+}
+
 function buildHoursEditor(s) {
   var mount = document.getElementById('hours-unified');
   if (!mount) mount = document.getElementById('he-rows');
   if (!mount) return;
+  // Vyber aktivní sadu hodin
+  var srcHours = (_hoursMode === 'holiday') ? (s.hoursHoliday || ['','','','','','','']) : s.hours;
   var now = new Date();
   var todayIdx = (now.getDay()+6) % 7;
   mount.innerHTML = '';
   var list = document.createElement('div');
   list.className = 'hours-unified-list';
   DAYS.forEach(function(d,i) {
-    var raw = (s.hours && s.hours[i]) || '';
+    var raw = (srcHours && srcHours[i]) || '';
     var isCl = raw === 'ZAVŘENO';
     var from='', to='';
     if (!isCl && raw) {
@@ -4743,6 +4830,112 @@ function parseHoursFromRaw(raw) {
   return {from:toT(m[1]),to:toT(m[2])};
 }
 
+// ─── SPRÁVA JEDNOTLIVÝCH TV ──────────────────────────────────────
+var TV_BRANDS = ['Samsung','LG','Sony','Philips','Panasonic','TCL','Hisense','Sencor','Jiná'];
+var TV_SIZES  = ['24"','27"','32"','40"','43"','48"','50"','55"','60"','65"','75"','Jiná'];
+
+function renderTVList() {
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  if (!s.tvs) s.tvs = [];
+  var el = document.getElementById('tv-list');
+  if (!el) return;
+
+  if (s.tvs.length === 0) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-4);font-size:13px;background:var(--paper);border:1px dashed var(--line);border-radius:var(--r2);">Zatím žádná TV. Klikni na „+ Přidat TV".</div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < s.tvs.length; i++) {
+    var tv = s.tvs[i];
+    var brandOpts = '';
+    for (var bi = 0; bi < TV_BRANDS.length; bi++) {
+      var b = TV_BRANDS[bi];
+      brandOpts += '<option' + (tv.brand === b ? ' selected' : '') + '>' + b + '</option>';
+    }
+    var sizeOpts = '';
+    for (var zi = 0; zi < TV_SIZES.length; zi++) {
+      var z = TV_SIZES[zi];
+      sizeOpts += '<option' + (tv.size === z ? ' selected' : '') + '>' + z + '</option>';
+    }
+    var isPortrait = tv.orient === 'portrait';
+    var locVal = (tv.location || '').replace(/"/g, '&quot;');
+    var noteVal = (tv.note || '').replace(/"/g, '&quot;');
+
+    html += '<div style="background:var(--paper);border:1px solid var(--line);border-radius:var(--r2);padding:14px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--ink-2);">📺 TV #' + (i+1) + '</div>'
+        + '<button data-tv-remove="' + i + '" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:12px;font-weight:600;">Odebrat</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+        + '<div class="field"><label class="field-label">Značka</label><select class="field-input" data-tv="' + i + '" data-tv-field="brand">' + brandOpts + '</select></div>'
+        + '<div class="field"><label class="field-label">Úhlopříčka</label><select class="field-input" data-tv="' + i + '" data-tv-field="size">' + sizeOpts + '</select></div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+        + '<div class="field"><label class="field-label">Orientace</label>'
+          + '<div style="display:flex;gap:6px;">'
+            + '<button data-tv-orient="' + i + '" data-orient-val="landscape" style="flex:1;padding:8px;border:1.5px solid ' + (!isPortrait ? 'var(--accent)' : 'var(--line)') + ';border-radius:var(--r);background:' + (!isPortrait ? 'var(--accent-soft)' : 'var(--paper)') + ';color:' + (!isPortrait ? 'var(--accent)' : 'var(--ink-3)') + ';cursor:pointer;font-size:12px;font-weight:600;">▭ Na šířku</button>'
+            + '<button data-tv-orient="' + i + '" data-orient-val="portrait" style="flex:1;padding:8px;border:1.5px solid ' + (isPortrait ? 'var(--accent)' : 'var(--line)') + ';border-radius:var(--r);background:' + (isPortrait ? 'var(--accent-soft)' : 'var(--paper)') + ';color:' + (isPortrait ? 'var(--accent)' : 'var(--ink-3)') + ';cursor:pointer;font-size:12px;font-weight:600;">▯ Na výšku</button>'
+          + '</div>'
+        + '</div>'
+        + '<div class="field"><label class="field-label">Umístění</label><input class="field-input" type="text" value="' + locVal + '" placeholder="např. nad pultem" data-tv="' + i + '" data-tv-field="location"></div>'
+      + '</div>'
+      + '<div class="field"><label class="field-label">Poznámka</label><input class="field-input" type="text" value="' + noteVal + '" placeholder="výrobní číslo, stav…" data-tv="' + i + '" data-tv-field="note"></div>'
+    + '</div>';
+  }
+  el.innerHTML = html;
+
+  // Naváž event listenery
+  el.querySelectorAll('[data-tv-field]').forEach(function(inp){
+    var handler = function(){
+      var idx = parseInt(inp.getAttribute('data-tv'));
+      var field = inp.getAttribute('data-tv-field');
+      updTV(idx, field, inp.value);
+    };
+    inp.addEventListener(inp.tagName === 'SELECT' ? 'change' : 'input', handler);
+  });
+  el.querySelectorAll('[data-tv-orient]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var idx = parseInt(btn.getAttribute('data-tv-orient'));
+      updTV(idx, 'orient', btn.getAttribute('data-orient-val'));
+    });
+  });
+  el.querySelectorAll('[data-tv-remove]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      removeTV(parseInt(btn.getAttribute('data-tv-remove')));
+    });
+  });
+}
+
+function addTV() {
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  if (!s.tvs) s.tvs = [];
+  s.tvs.push({ brand:'Samsung', size:'43"', orient:'landscape', location:'', note:'' });
+  s.lcd = s.tvs.length;
+  markDirty();
+  renderTVList();
+}
+
+function removeTV(i) {
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  s.tvs.splice(i, 1);
+  s.lcd = s.tvs.length;
+  markDirty();
+  renderTVList();
+}
+
+function updTV(i, field, val) {
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  if (!s.tvs || !s.tvs[i]) return;
+  s.tvs[i][field] = val;
+  markDirty();
+  if (field === 'orient') renderTVList(); // překreslit tlačítka
+}
+
 function calcTVRadio() {
   var s=stores[currentStoreIdx]; if(!s) return;
   var tvBefore=parseInt(document.getElementById('tv-before').value)||0;
@@ -4842,7 +5035,7 @@ function switchDTab(tab,el){
   var panel = document.getElementById('tp-'+tab);
   if (panel) panel.classList.add('active');
   if(tab==='checklist') renderChecklist();
-  if(tab==='tvradia') calcTVRadio();
+  if(tab==='tvradia') { calcTVRadio(); renderTVList(); }
   if(tab==='plakat') initPlakat();
   if(tab==='svatky' && currentStoreIdx >= 0) renderSvatkyTable(stores[currentStoreIdx]);
 }
