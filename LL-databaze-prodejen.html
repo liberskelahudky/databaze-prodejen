@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
    ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v49                      ║
-   ║  NEW: pudorys – nova grafika (stiny, ikony, legenda, zaobleni)   ║
+   ║  NEW: filtry v55 (seskupene, tri-stavove) + fix badge  ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -2216,6 +2216,35 @@ input.sb-search:focus {
   .hu-actions { justify-content: flex-end; }
   .hu-input { width: 80px; flex: 1; max-width: 100px; }
 }
+
+/* ═══ SIDEBAR FILTRY v55 — seskupene, tri-stavove ═══════════════════ */
+.sb-filters { display:flex; flex-direction:column; gap:9px; margin-bottom:8px; }
+.sbf-group { display:flex; flex-direction:column; gap:5px; }
+.sbf-glabel { font-size:9px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); padding-left:2px; }
+.sbf-row { display:flex; flex-wrap:wrap; gap:5px; }
+.tsf {
+  font-family:var(--font); font-size:11.5px; font-weight:600; line-height:1;
+  padding:6px 10px; border-radius:99px; cursor:pointer;
+  background:var(--paper); color:var(--ink-2);
+  border:1px solid var(--line); outline:none;
+  transition:all .15s ease; white-space:nowrap;
+}
+.tsf:hover { background:var(--paper-2); border-color:var(--line-strong); }
+.tsf.sf-on-yes { background:var(--open-bg); color:var(--open); border-color:#8fd6a6; font-weight:700; }
+.tsf.sf-on-yes::before { content:'✓'; margin-right:4px; font-weight:800; }
+.tsf.sf-on-no { background:var(--closed-bg); color:var(--closed); border-color:#eea99f; font-weight:700; }
+.tsf.sf-on-no::before { content:'✕'; margin-right:4px; font-weight:800; }
+.tsf.tsf-type.sf-on-yes { background:var(--accent-pale); color:var(--accent-d); border-color:var(--accent-line); }
+.tsf.tsf-type.sf-on-yes::before { content:''; margin:0; }
+.sbf-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:1px 2px 0; }
+.sbf-hint { font-size:9px; color:var(--ink-3); }
+.sbf-hint b { color:var(--ink-2); font-weight:700; }
+.sbf-clear {
+  font-family:var(--font); font-size:10.5px; font-weight:700; cursor:pointer;
+  background:var(--closed-bg); color:var(--closed);
+  border:1px solid #eea99f; border-radius:99px; padding:4px 10px; white-space:nowrap;
+}
+.sbf-clear:hover { filter:brightness(.98); }
 </style>
 
 </head>
@@ -2269,23 +2298,50 @@ input.sb-search:focus {
       <button id="sb-sort-btn" onclick="toggleSbSort()" style="font-family:var(--font);font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;border:1px solid var(--line-strong);background:var(--paper-2);color:var(--ink-3);cursor:pointer;transition:all .15s;white-space:nowrap;">📋 Číslo</button>
       <button onclick="clearSbFilters()" style="font-family:var(--font);font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;border:1px solid var(--line-strong);background:var(--paper-2);color:var(--ink-3);cursor:pointer;transition:all .15s;white-space:nowrap;">✕ Vše</button>
     </div>
-    <div class="sb-filters">
-      <button class="sb-filter" data-f="open" onclick="toggleSbFilter('open',this)">Otevřeno</button>
-      <button class="sb-filter" data-f="wolt" onclick="toggleSbFilter('wolt',this)">Wolt</button>
-      <button class="sb-filter" data-f="zmrzlina" onclick="toggleSbFilter('zmrzlina',this)">🍦 Zmrzlina</button>
-      <button class="sb-filter" data-f="tv" onclick="toggleSbFilter('tv',this)">📺 TV</button>
-      <button class="sb-filter" data-f="bez-tv" onclick="toggleSbFilter('bez-tv',this)">📺 Bez TV</button>
-      <button class="sb-filter" data-f="okenko" onclick="toggleSbFilter('okenko',this)">🪟 Okénko</button>
-      <button class="sb-filter" data-f="kiosek" onclick="toggleSbFilter('kiosek',this)">🏪 Kiosek</button>
-      <button class="sb-filter" data-f="samo-lednice" onclick="toggleSbFilter('samo-lednice',this)">🧊 Sam. lednice</button>
-      <button class="sb-filter" data-f="seating" onclick="toggleSbFilter('seating',this)">Sezení</button>
-      <button class="sb-filter" data-f="vyroba" onclick="toggleSbFilter('vyroba',this)">Výroba</button>
-      <button class="sb-filter" data-f="oc" onclick="toggleSbFilter('oc',this)">OC</button>
-      <button class="sb-filter" data-f="poliklinika" onclick="toggleSbFilter('poliklinika',this)">Poliklinika</button>
-      <button class="sb-filter" data-f="dopravni" onclick="toggleSbFilter('dopravni',this)">Dopravní uzel</button>
-      <button class="sb-filter" data-f="mimoprazska" onclick="toggleSbFilter('mimoprazska',this)">Mimopražská</button>
-      <button class="sb-filter" data-f="centrum" onclick="toggleSbFilter('centrum',this)">Centrum</button>
-      <button class="sb-filter" data-f="missing" onclick="toggleSbFilter('missing',this)">Chybí data</button>
+    <div class="sb-filters" id="sb-filters">
+      <div class="sbf-group">
+        <span class="sbf-glabel">Stav</span>
+        <div class="sbf-row">
+          <button class="tsf" data-f="open" onclick="cycleFilter('open',this)">Otevřeno</button>
+          <button class="tsf" data-f="missing" onclick="cycleFilter('missing',this)">Chybí data</button>
+        </div>
+      </div>
+      <div class="sbf-group">
+        <span class="sbf-glabel">Služby</span>
+        <div class="sbf-row">
+          <button class="tsf" data-f="wolt" onclick="cycleFilter('wolt',this)">Wolt</button>
+          <button class="tsf" data-f="zmrzlina" onclick="cycleFilter('zmrzlina',this)">🍦 Zmrzlina</button>
+          <button class="tsf" data-f="trist" onclick="cycleFilter('trist',this)">🧊 Ledová tříšť</button>
+          <button class="tsf" data-f="okenko" onclick="cycleFilter('okenko',this)">🪟 Okénko</button>
+        </div>
+      </div>
+      <div class="sbf-group">
+        <span class="sbf-glabel">Vybavení</span>
+        <div class="sbf-row">
+          <button class="tsf" data-f="tv" onclick="cycleFilter('tv',this)">📺 TV</button>
+          <button class="tsf" data-f="vyroba" onclick="cycleFilter('vyroba',this)">Výroba</button>
+          <button class="tsf" data-f="kiosek" onclick="cycleFilter('kiosek',this)">Kiosek</button>
+          <button class="tsf" data-f="samo" onclick="cycleFilter('samo',this)">Sam. lednice</button>
+          <button class="tsf" data-f="seating" onclick="cycleFilter('seating',this)">Sezení</button>
+          <button class="tsf" data-f="eshop" onclick="cycleFilter('eshop',this)">E-shop</button>
+          <button class="tsf" data-f="barrier" onclick="cycleFilter('barrier',this)">Bezbariér</button>
+        </div>
+      </div>
+      <div class="sbf-group">
+        <span class="sbf-glabel">Typ prodejny</span>
+        <div class="sbf-row">
+          <button class="tsf tsf-type" data-f="type_ulice" onclick="cycleType('type_ulice',this)">Ulice</button>
+          <button class="tsf tsf-type" data-f="type_oc" onclick="cycleType('type_oc',this)">OC</button>
+          <button class="tsf tsf-type" data-f="type_poliklinika" onclick="cycleType('type_poliklinika',this)">Poliklinika</button>
+          <button class="tsf tsf-type" data-f="type_dopravni" onclick="cycleType('type_dopravni',this)">Dopravní uzel</button>
+          <button class="tsf tsf-type" data-f="type_mimoprazska" onclick="cycleType('type_mimoprazska',this)">Mimopražská</button>
+          <button class="tsf tsf-type" data-f="type_centrum" onclick="cycleType('type_centrum',this)">Centrum</button>
+        </div>
+      </div>
+      <div class="sbf-foot">
+        <span class="sbf-hint">klik: <b>má</b> → <b>nemá</b> → zrušit</span>
+        <button class="sbf-clear" id="sbf-clear" onclick="clearSbFilters()" style="display:none;">✕ Zrušit vše</button>
+      </div>
     </div>
   </div>
   <div class="store-list" id="store-list"></div>
@@ -2601,6 +2657,7 @@ input.sb-search:focus {
                 <label class="feat-chip" id="chip-kiosek"><input type="checkbox" id="f-kiosek" onchange="updateChip('chip-kiosek','f-kiosek');onFieldChange()"><span>🏪 Kiosek</span></label>
                 <label class="feat-chip" id="chip-eshop"><input type="checkbox" id="f-eshop" onchange="updateChip('chip-eshop','f-eshop');onFieldChange()"><span>📦 E-shop výdejna</span></label>
                 <label class="feat-chip" id="chip-vyroba"><input type="checkbox" id="f-vyroba" onchange="updateChip('chip-vyroba','f-vyroba');onFieldChange()"><span>🔪 Výroba</span></label>
+                <label class="feat-chip" id="chip-trist"><input type="checkbox" id="f-trist" onchange="updateChip('chip-trist','f-trist');onFieldChange()"><span>🧊 Ledová tříšť</span></label>
               </div>
             </div>
 
@@ -3268,7 +3325,7 @@ function emptyStore(id, name, type) {
     obchZast: 'David Fendrych',
     wolt: '', gmaps: '', drive: '',
     landlord: '', landlordTel: '', leaseEnd: '', area: '',
-    mhd: '', parking: '', barrier: false, seating: false, eshop: false, kiosek: false, vyroba: false, samoLednice: false, pokladny: 0,
+    mhd: '', parking: '', barrier: false, seating: false, eshop: false, kiosek: false, vyroba: false, trist: false, samoLednice: false, pokladny: 0,
     hours: ['','','','','','',''],
     zmrzlina: 0, nfc: 0, lcd: 0, dvere: 0,
     kavovar: '', lednice: 0, vahy: 0, pos: '',
@@ -3526,7 +3583,7 @@ function loadFromSheets() {
         'wolt','gmaps','firmy','web','drive','photo',
         'zmrzHours','zmrzVydej','zmrzFoto','zmrzNote','zmrzType',
         'zmrzlina','nfc','lcd','dvere','kavovar','lednice','vahy','pos',
-        'okenko','barrier','seating','eshop','kiosek','vyroba','samoLednice',
+        'okenko','barrier','seating','eshop','kiosek','vyroba','trist','samoLednice',
         'landlord','landlordTel','landlordEmail','leaseEnd','area','mhd','parking','pokladny',
         'techKontakty','techNotes',
         'notes','saints','exceptions','changelog','hours',
@@ -3959,23 +4016,38 @@ function renderWoltGrid() {
 }
 
 // ─── SIDEBAR ─────────────────────────────────────────────────────
+var TYPE_MAP = {
+  type_ulice: 'Ulice',
+  type_oc: 'Obchodní centrum',
+  type_poliklinika: 'Poliklinika',
+  type_dopravni: 'Dopravní uzel',
+  type_mimoprazska: 'Mimopražská',
+  type_centrum: 'Centrum'
+};
+
+function attrPredicate(s, a) {
+  if (a==='open')     return getStoreStatus(s).status==='open';
+  if (a==='missing')  return !s.addr || !s.tel || s.hours.every(function(h){return !h;});
+  if (a==='wolt')     return s.wolt==='Ano';
+  if (a==='zmrzlina') return s.zmrzType==='okenko'||s.zmrzType==='prodejna'||s.zmrzType==='mrazak'||(s.zmrzlina>0);
+  if (a==='trist')    return !!s.trist;
+  if (a==='okenko')   return s.zmrzType==='okenko'||!!s.okenko;
+  if (a==='tv')       return (s.lcd||0)>0;
+  if (a==='kiosek')   return !!s.kiosek;
+  if (a==='samo')     return !!s.samoLednice;
+  if (a==='seating')  return !!s.seating;
+  if (a==='vyroba')   return !!s.vyroba;
+  if (a==='eshop')    return !!s.eshop;
+  if (a==='barrier')  return !!s.barrier;
+  return true;
+}
+
 function matchesFilter(s, f) {
-  if (f==='open')         return getStoreStatus(s).status==='open';
-  if (f==='wolt')         return s.wolt==='Ano';
-  if (f==='missing')      return !s.addr||!s.tel||s.hours.every(function(h){return !h;});
-  if (f==='zmrzlina')     return s.zmrzType==='okenko'||s.zmrzType==='prodejna'||s.zmrzType==='mrazak'||(s.zmrzlina>0);
-  if (f==='tv')           return (s.lcd||0)>0;
-  if (f==='bez-tv')       return (s.lcd||0)===0;
-  if (f==='okenko')       return s.zmrzType==='okenko'||s.okenko;
-  if (f==='kiosek')       return !!s.kiosek;
-  if (f==='samo-lednice') return !!s.samoLednice;
-  if (f==='seating')      return s.seating;
-  if (f==='vyroba')       return s.vyroba;
-  if (f==='oc')           return s.type==='Obchodní centrum';
-  if (f==='poliklinika')  return s.type==='Poliklinika';
-  if (f==='dopravni')     return s.type==='Dopravní uzel';
-  if (f==='mimoprazska')  return s.type==='Mimopražská';
-  if (f==='centrum')      return s.type==='Centrum';
+  if (f.indexOf('attr_')===0) {
+    var a = f.slice(5);
+    var has = attrPredicate(s, a);
+    return sbFilters['attr_'+a]==='no' ? !has : has;
+  }
   return true;
 }
 
@@ -3984,7 +4056,12 @@ function renderSidebar() {
   var list = document.getElementById('store-list');
   if (!list) { console.error('[renderSidebar] #store-list element missing'); return; }
   var q = (sbEl && sbEl.value || '').toLowerCase();
-  var activeFilters = Object.keys(sbFilters).filter(function(k){ return sbFilters[k]; });
+  var _attrKeys = [], _typeKeys = [];
+  Object.keys(sbFilters).forEach(function(k){
+    if (!sbFilters[k]) return;
+    if (k.indexOf('attr_')===0) _attrKeys.push(k);
+    else if (k.indexOf('type_')===0) _typeKeys.push(k);
+  });
 
   // Normalize any broken stores (missing fields from Sheets merge etc.)
   stores.forEach(function(s, i) {
@@ -4007,10 +4084,13 @@ function renderSidebar() {
   try {
     filtered = stores.filter(function(s) {
       var matchQ = !q || (s.name||'').toLowerCase().indexOf(q)!==-1 || (s.addr||'').toLowerCase().indexOf(q)!==-1 || (s.vedouci||'').toLowerCase().indexOf(q)!==-1;
-      var matchF = activeFilters.length===0 || activeFilters.every(function(f){
+      var matchAttr = _attrKeys.every(function(f){
         try { return matchesFilter(s,f); } catch(e){ return true; }
       });
-      return matchQ && matchF;
+      var matchType = _typeKeys.length===0 || _typeKeys.some(function(f){
+        return s.type === TYPE_MAP[f];
+      });
+      return matchQ && matchAttr && matchType;
     });
   } catch(e) {
     console.error('[renderSidebar] filter failed, showing all:', e);
@@ -4073,6 +4153,33 @@ function toggleSbFilter(f, el) {
   renderSidebar();
 }
 
+// ── Tri-stavovy filtr atributu: nic -> 'yes' (má) -> 'no' (nemá) -> nic ──
+function cycleFilter(f, el) {
+  var key = 'attr_'+f;
+  var cur = sbFilters[key];
+  var next = (cur !== 'yes' && cur !== 'no') ? 'yes' : (cur === 'yes' ? 'no' : null);
+  if (next) sbFilters[key] = next; else delete sbFilters[key];
+  el.classList.remove('sf-on-yes','sf-on-no');
+  if (next === 'yes') el.classList.add('sf-on-yes');
+  else if (next === 'no') el.classList.add('sf-on-no');
+  updateFilterFoot();
+  renderSidebar();
+}
+// ── Typovy filtr: zap/vyp (vice typu = NEBO) ──
+function cycleType(f, el) {
+  sbFilters[f] = !sbFilters[f];
+  el.classList.toggle('sf-on-yes', !!sbFilters[f]);
+  updateFilterFoot();
+  renderSidebar();
+}
+function updateFilterFoot() {
+  var any = Object.keys(sbFilters).some(function(k){
+    return (k.indexOf('attr_')===0 || k.indexOf('type_')===0) && sbFilters[k];
+  });
+  var btn = document.getElementById('sbf-clear');
+  if (btn) btn.style.display = any ? '' : 'none';
+}
+
 function toggleStatusFilter(st, card) {
   var key = 'status_'+st;
   sbFilters[key] = !sbFilters[key];
@@ -4115,10 +4222,11 @@ function renderLiveGridFiltered() {
 }
 function clearSbFilters() {
   sbFilters = {};
-  document.querySelectorAll('.sb-filter').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.tsf').forEach(function(b){ b.classList.remove('sf-on-yes','sf-on-no'); });
   document.querySelectorAll('.sum-clickable').forEach(function(c){ c.classList.remove('sum-active'); });
+  updateFilterFoot();
   renderSidebar();
-  renderLiveGridFiltered(); // zobraz všechny karty v live gridu
+  renderLiveGridFiltered();
 }
 function toggleSbSort() {
   sbSort = sbSort==='num' ? 'alpha' : 'num';
@@ -4136,6 +4244,7 @@ function openStoreByIdx(idx, switchToStoreView) {
   document.getElementById('store-empty').style.display = 'none';
   document.getElementById('store-detail').style.display = 'block';
   fillStoreDetail(stores[idx]);
+  refreshActiveDTab();
   renderSidebar();
   // Scrolluj na začátek detailu
   var mainEl = document.getElementById('main-area');
@@ -4154,10 +4263,12 @@ function fillStoreDetail(s) {
   document.getElementById('dt-name').textContent = s.name;
   document.getElementById('dt-addr').textContent = s.addr || 'Adresa není zadána';
   // Code badge + type tag
-  var codeBadge = document.getElementById('dt-code-badge');
-  var typeTag   = document.getElementById('dt-type-tag');
-  if (codeBadge) codeBadge.textContent = '#' + (s.code || s.id);
-  if (typeTag)   typeTag.textContent   = s.type || 'Prodejna';
+  var _codeTxt = '#' + (s.code || s.id);
+  var _typeTxt = s.type || 'Prodejna';
+  var _cb = document.querySelectorAll('.dt-code-badge');
+  for (var _c=0; _c<_cb.length; _c++) _cb[_c].textContent = _codeTxt;
+  var _tt = document.querySelectorAll('.dt-type-tag');
+  for (var _t=0; _t<_tt.length; _t++) _tt[_t].textContent = _typeTxt;
   var heroImg   = document.getElementById('dt-photo');
   var heroEmpty = document.getElementById('dt-hero-empty');
   if (s.photo) {
@@ -4169,8 +4280,9 @@ function fillStoreDetail(s) {
   }
 
   var st = getStoreStatus(s);
-  document.getElementById('dt-live-status').innerHTML =
-    '<span class="lc-status '+st.status+'" style="font-size:12px;padding:4px 10px;">'+st.label+'</span>';
+  var _statusHtml = '<span class="lc-status '+st.status+'" style="font-size:12px;padding:4px 10px;">'+st.label+'</span>';
+  var _stEls = document.querySelectorAll('#dt-live-status');
+  for (var _si=0; _si<_stEls.length; _si++) _stEls[_si].innerHTML = _statusHtml;
 
   // Základní info
   setV('f-id', s.code||s.id); setV('f-name', s.name); setV('f-type', s.type);
@@ -4191,7 +4303,7 @@ function fillStoreDetail(s) {
   renderTechKontakty();
   setV('f-pokladny', s.pokladny||0);
   setC('f-barrier', !!s.barrier); setC('f-seating', !!s.seating);
-  setC('f-eshop', !!s.eshop); setC('f-kiosek', !!s.kiosek); setC('f-vyroba', !!s.vyroba);
+  setC('f-eshop', !!s.eshop); setC('f-kiosek', !!s.kiosek); setC('f-vyroba', !!s.vyroba); setC('f-trist', !!s.trist);
   setC('f-samo-lednice', !!s.samoLednice);
   // Vybavení
   setV('f-zmrzlina', s.zmrzlina||0); setV('f-nfc', s.nfc||0);
@@ -4328,7 +4440,7 @@ function saveCurrentStore() {
   if (!isNaN(latV)) s.lat = latV;
   if (!isNaN(lngV)) s.lng = lngV;
   s.barrier = getC('f-barrier'); s.seating = getC('f-seating');
-  s.eshop = getC('f-eshop'); s.kiosek = getC('f-kiosek'); s.vyroba = getC('f-vyroba');
+  s.eshop = getC('f-eshop'); s.kiosek = getC('f-kiosek'); s.vyroba = getC('f-vyroba'); s.trist = getC('f-trist');
   s.samoLednice = getC('f-samo-lednice');
   s.pokladny = parseInt(getV('f-pokladny'))||0;
   s.zmrzlina = parseInt(getV('f-zmrzlina'))||0; s.nfc = parseInt(getV('f-nfc'))||0;
@@ -5384,6 +5496,18 @@ function copyTVRadio(){
 
 
 // ─── TABS ────────────────────────────────────────────────────────
+function refreshActiveDTab(){
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  var active = document.querySelector('.tab-panel.active');
+  if (!active) return;
+  var id = active.id;
+  if (id === 'tp-pudorys') { _pgSelected = null; renderPlanogram(); }
+  else if (id === 'tp-checklist') { renderChecklist(); }
+  else if (id === 'tp-tvradia') { calcTVRadio(); renderTVList(); }
+  else if (id === 'tp-svatky') { renderSvatkyTable(s); }
+}
+
 function switchDTab(tab,el){
   // Na mobilu přeskoč skryté záložky — najdi první viditelnou
   if (window.innerWidth <= 700 && el && el.offsetParent === null) {
@@ -6812,7 +6936,7 @@ function syncAllChips() {
   var pairs = [
     ['chip-barrier','f-barrier'],['chip-seating','f-seating'],
     ['chip-samo','f-samo-lednice'],['chip-kiosek','f-kiosek'],
-    ['chip-eshop','f-eshop'],['chip-vyroba','f-vyroba']
+    ['chip-eshop','f-eshop'],['chip-vyroba','f-vyroba'],['chip-trist','f-trist']
   ];
   pairs.forEach(function(p){ updateChip(p[0], p[1]); });
 }
