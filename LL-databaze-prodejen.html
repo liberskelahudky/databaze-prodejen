@@ -1,25 +1,17 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=1">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
-  <link rel="manifest" href="manifest.webmanifest?v=1">
-  <meta name="theme-color" content="#6B7A50">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Prodejny">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#FBF7F0">
-<title>Databáze prodejen — Libeřské lahůdky v45</title>
+<title>Databáze prodejen — Libeřské lahůdky v49</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
-   ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v45                      ║
-   ║  FIX: tlacitko Ulozit viditelnejsi pres fotku prodejny         ║
+   ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v49                      ║
+   ║  NEW: pudorys – nova grafika (stiny, ikony, legenda, zaobleni)   ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -2449,6 +2441,7 @@ input.sb-search:focus {
         <button class="tnav" onclick="switchDTab('poznamky',this)"><span class="tnav-icon">📝</span><span>Poznámky</span></button>
         <button class="tnav dtab-tvradia" onclick="switchDTab('tvradia',this)"><span class="tnav-icon">📺</span><span>TV / Rádio</span></button>
         <button class="tnav" onclick="switchDTab('technika',this)"><span class="tnav-icon">🔧</span><span>Technika</span></button>
+        <button class="tnav" onclick="switchDTab('pudorys',this)"><span class="tnav-icon">🗺️</span><span>Půdorys</span></button>
       </div>
       </div><!-- /detail-topbar -->
 
@@ -2853,7 +2846,36 @@ input.sb-search:focus {
 
       </div>
 
-      </div><!-- /detail-tabs -->
+      <!-- TAB: PŮDORYS -->
+      <div class="tab-panel" id="tp-pudorys">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);">Půdorys prodejny</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost" onclick="pgAddElement('tv')">+ TV</button>
+            <button class="btn btn-ghost" onclick="pgAddElement('counter')">+ Pult</button>
+            <button class="btn btn-ghost" onclick="pgAddElement('fridge')">+ Lednice</button>
+            <button class="btn btn-ghost" onclick="pgAddElement('zmrz')">+ Zmrzlina</button>
+            <button class="btn btn-ghost" onclick="pgAddElement('entrance')">+ Vchod</button>
+            <button class="btn btn-ghost" onclick="pgAddElement('kos')">+ Koš</button>
+            <button class="btn btn-ghost" onclick="pgAddElement('table')">+ Stůl</button>
+            <button class="btn btn-red" onclick="pgSave()">💾 Uložit půdorys</button>
+          </div>
+        </div>
+        <div class="section-notice" style="margin-bottom:12px;">
+          Klikni na prvek pro výběr, pak ho táhni myší. Dvojklik = přejmenovat. Klávesa Delete = smazat vybraný prvek.
+        </div>
+        <div id="pg-canvas-wrap" style="background:#FCFAF7;border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;position:relative;box-shadow:inset 0 1px 3px rgba(58,46,36,.06);">
+          <svg id="pg-canvas" viewBox="0 0 1000 700" style="width:100%;height:auto;display:block;cursor:default;user-select:none;"></svg>
+        </div>
+        <div id="pg-selected-info" style="margin-top:12px;display:none;background:var(--paper);border:1px solid var(--line);border-radius:var(--r2);padding:12px 14px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:12px;font-weight:600;color:var(--ink-2);">Vybraný prvek:</span>
+            <input id="pg-sel-label" class="field-input" style="width:200px;" oninput="pgUpdateLabel()" placeholder="popisek">
+            <button class="btn btn-ghost" onclick="pgRotate()">↻ Otočit</button>
+            <button class="btn btn-ghost" style="color:#b91c1c;" onclick="pgDeleteSelected()">Smazat</button>
+          </div>
+        </div>
+      </div>
     </div><!-- /store-detail -->
   </div><!-- /view-store -->
 
@@ -3260,28 +3282,28 @@ function emptyStore(id, name, type) {
 
 // ─── INITIAL DATA ────────────────────────────────────────────────
 var DEFAULT_STORES = [
-  {'id':'1','code':'64','lat':50.0908,'lng':14.4378,'name':'Florenc – Na Poříčí','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-832.png','type':'Ulice','addr':'Biskupská 1065/1, 110 00 Praha 1','tel':'+420 734 233 715','email':'porici@liberskelahudky.cz','vedouci':'Věra Málková','vedouciTel':'+420 734 233 715','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://g.page/Liberske-lahudky-na-porici?share','firmy':'https://www.firmy.cz/company/13362499-liberske-lahudky-praha-florenc.html','web':'https://www.liberskelahudky.cz/prodejna/florenc-na-porici/','drive':'https://drive.google.com/drive/folders/1f6Nvorvfs6rwaDmr8c9sKFiHN5OvxpfC','parking':'','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['06:30-19:00','06:30-19:00','06:30-19:00','06:30-19:00','06:30-19:00','08:00-18:00','08:00-18:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'okenko','notes':'','saints':{},'exceptions':{},'landlord':'','landlordTel':'','landlordEmail':'','leaseEnd':'','area':'','mhd':'','samoLednice':false,'pokladny':0,'kavovar':'','lednice':0,'vahy':0,'pos':'','zmrzFoto':'','zmrzNote':'','techNotes':''},
-  {'id':'2','code':'53','lat':50.082,'lng':14.4248,'name':'Vodičkova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-826.png','type':'Ulice','addr':'Vodičkova 730/9, 110 00 Praha 1','tel':'+420 733 766 054','email':'vodickova@liberskelahudky.cz','vedouci':'Marie Navrátilová','vedouciTel':'+420 733 766 054','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://g.page/LiberskeLahudkyVodickova?share','firmy':'https://www.firmy.cz/company/13362500-liberske-lahudky-praha-nove-mesto.html','web':'https://www.liberskelahudky.cz/prodejna/vodickova/','drive':'https://drive.google.com/drive/folders/1-Pg-bj-uTTyg0xM3jZdc06-SfU5cICSY','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':4,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{},'changelog':[]},
-  {'id':'3','code':'68','lat':50.0177,'lng':14.5132,'name':'Háje','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-818.png','type':'Ulice','addr':'Arkalycкá 758/2, 149 00 Praha 11','tel':'+420 703 636 919','email':'haje@liberskelahudky.cz','vedouci':'Lucie Murtingerová','vedouciTel':'+420 703 636 919','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13397290-liberske-lahudky-praha-haje.html','web':'https://www.liberskelahudky.cz/prodejna/haje/','drive':'https://drive.google.com/drive/folders/19H_cUpZex3WAmhTjttgbbaCpikHNas34','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['07:00-19:00','07:00-19:00','07:00-19:00','07:00-19:00','07:00-19:00','08:00-14:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':2,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'4','code':'69','lat':50.0617,'lng':14.4286,'name':'Arkády Pankrác','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-831.png','type':'Obchodní centrum','addr':'Na Pankráci 1727/86, 140 00 Praha 4','tel':'+420 703 635 653','email':'arkady@liberskelahudky.cz','vedouci':'Veronika Hromková','vedouciTel':'+420 703 635 653','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://g.page/liberske-lahudky-arkady?share','firmy':'https://www.firmy.cz/company/13472477-liberske-lahudky-praha-nusle.html','web':'https://www.liberskelahudky.cz/prodejna/arkady-pankrac/','drive':'https://drive.google.com/drive/folders/1SCRPYh3a4U0Oq82KhOHPaQD_jIaCcmyF','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['07:00-21:00','07:00-21:00','07:00-21:00','07:00-21:00','07:00-21:00','09:00-21:00','09:00-21:00'],'zmrzlina':0,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
-  {'id':'5','code':'66','lat':50.0022,'lng':14.4147,'name':'Poliklinika Modřany','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-833.png','type':'Poliklinika','addr':'Soukalova 3355/3, 143 01 Praha 12','tel':'+420 731 344 934','email':'modrany@liberskelahudky.cz','vedouci':'Monika Mihalova','vedouciTel':'+420 731 344 934','obchZast':'Richard Sviták','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13472485-liberske-lahudky-praha-modrany.html','web':'https://www.liberskelahudky.cz/prodejna/modrany/','drive':'https://drive.google.com/drive/folders/1wzAn9_Ds8Ls0dymWYhxIF6-kpgHiT6Mh','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['07:00-17:00','07:00-17:00','07:00-17:00','07:00-17:00','07:00-14:00','ZAVŘENO','ZAVŘENO'],'zmrzlina':0,'nfc':0,'lcd':2,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
-  {'id':'6','code':'70','lat':50.054,'lng':14.4495,'name':'DBK Olbrachtova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-827.png','type':'Obchodní centrum','addr':'Olbrachtova 1946/64, 140 00 Praha 4','tel':'+420 703 635 637','email':'dbk@liberskelahudky.cz','vedouci':'Erzsebét Rápova','vedouciTel':'+420 774 293 018','obchZast':'Richard Sviták','wolt':'','gmaps':'https://goo.gl/maps/bMQRtWEcLq1n3y6g9','firmy':'https://www.firmy.cz/company/13472484-liberske-lahudky-praha-olbrachtova.html','web':'https://www.liberskelahudky.cz/prodejna/dbk-olbrachtova/','drive':'https://drive.google.com/drive/folders/1ihnJzpIQFvdmQdZbPn97cdvfUjch9ist','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-14:00','ZAVŘENO'],'zmrzlina':5,'nfc':0,'lcd':2,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'7','code':'65','lat':50.0486,'lng':14.4528,'name':'Poliklinika Budějovická','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-806.png','type':'Poliklinika','addr':'Antala Staška 1670/80, 140 00 Praha 4','tel':'+420 734 233 712','email':'budejovicka@liberskelahudky.cz','vedouci':'Farzanh Yazdaniová','vedouciTel':'+420 734 233 712','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://g.page/LiberskeLahudkyKrc?share','firmy':'https://www.firmy.cz/company/13472483-liberske-lahudky-praha-krc.html','web':'https://www.liberskelahudky.cz/prodejna/budejovicka/','drive':'https://drive.google.com/drive/folders/1YB9efqdIFz5s4eV8iFRGD7uW9T04QuD_','parking':'Bezbarérový přístup','barrier':true,'seating':true,'eshop':false,'kiosek':false,'vyroba':true,'hours':['06:30-18:00','06:30-18:00','06:30-18:00','06:30-18:00','06:30-17:00','ZAVŘENO','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'Po-Čt 10:00-17:00, Pá 10:00-16:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
-  {'id':'8','code':'60','lat':50.0283,'lng':14.4488,'name':'Krč – Thomayerova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-819.png','type':'Poliklinika','addr':'Vídeňská 800, 140 00 Praha 4','tel':'+420 734 233 714','email':'krc@liberskelahudky.cz','vedouci':'Radka Přibylová','vedouciTel':'+420 734 233 714','obchZast':'Richard Sviták','wolt':'','gmaps':'https://g.page/LiberskeLahudkyKrc?share','firmy':'https://www.firmy.cz/company/13472483-liberske-lahudky-praha-krc.html','web':'https://www.liberskelahudky.cz/prodejna/krc-thomayerova/','drive':'https://drive.google.com/drive/folders/1vJund0hCDQBv0vqiilGzdw-lmLnjGTkL','barrier':true,'seating':true,'eshop':false,'kiosek':false,'vyroba':true,'hours':['06:15-17:00','06:15-17:00','06:15-17:00','06:15-17:00','06:15-17:00','08:00-17:00','09:00-16:00'],'zmrzlina':5,'nfc':0,'lcd':3,'dvere':0,'okenko':true,'zmrzHours':'Po-So 10:00-16:00, Ne 10:00-15:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'9','code':'52','lat':50.1022,'lng':14.4356,'name':'Letná – Strossmayerovo nám.','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-830.png','type':'Ulice','addr':'Dukelských hrdinů 691/33, 170 00 Praha 7','tel':'+420 739 047 959','email':'dukelskychhrdinu@liberskelahudky.cz','vedouci':'Irena Bažová','vedouciTel':'+420 739 047 959','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13539384-liberske-lahudky-praha-holesovice-2.html','web':'https://www.liberskelahudky.cz/prodejna/letna/','drive':'https://drive.google.com/drive/folders/1vU61lJiy1QUbVRGcmUpeqD0HwixG3h4N','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':1,'lcd':3,'dvere':1,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
-  {'id':'10','code':'73','lat':50.1044,'lng':14.4487,'name':'Holešovice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-820.png','type':'Ulice','addr':'Komunardů 1126/31, 170 00 Praha 7','tel':'+420 605 549 235','email':'holesovice@liberskelahudky.cz','vedouci':'Miroslava Smuk','vedouciTel':'+420 605 549 235','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13539385-liberske-lahudky-praha-holesovice.html','web':'https://www.liberskelahudky.cz/prodejna/holesovice/','drive':'https://drive.google.com/drive/folders/1gmd4Y7lE0SmoyVRdgdG8tZ6apApkCfQa','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':0,'lcd':2,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 9:00-17:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'11','code':'71','lat':50.1001,'lng':14.3879,'name':'Dejvice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-823.png','type':'Ulice','addr':'Kafkova 580/26, 160 00 Praha 6','tel':'+420 703 635 658','email':'dejvice@liberskelahudky.cz','vedouci':'Petr Šindelář','vedouciTel':'+420 703 635 658','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://goo.gl/maps/scAnu36dig1nV26XA','firmy':'https://www.firmy.cz/company/13362503-liberske-lahudky-praha-dejvice.html','web':'https://www.liberskelahudky.cz/prodejna/dejvice/','drive':'https://drive.google.com/drive/folders/1z5qJrCcX96r-LY67lr_ofjCnlbWdbAU0','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':1,'lcd':2,'dvere':2,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'12','code':'51','lat':50.1018,'lng':14.469,'name':'Palmovka','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png','type':'Ulice','addr':'Na Žertvách 107/8, 180 00 Praha 8','tel':'+420 731 151 317','email':'palmovka@liberskelahudky.cz','vedouci':'Gabriela Dvořáková','vedouciTel':'+420 731 151 317','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13362492-liberske-lahudky-praha-liben.html','web':'https://www.liberskelahudky.cz/prodejna/palmovka/','drive':'https://drive.google.com/drive/folders/1Toqt0Pbmb4eccvXAx6yQ3fffW_fmJg0l','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
-  {'id':'13','code':'50','lat':50.0732,'lng':14.4022,'name':'Anděl – Ostrovského','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-828.png','type':'Ulice','addr':'Ostrovského 33/2, 150 00 Praha 5','tel':'+420 731 151 313','email':'ostrovskeho@liberskelahudky.cz','vedouci':'Olga Fritschová','vedouciTel':'+420 731 151 313','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://g.page/LiberskeLahudkySmichov?share','firmy':'https://www.firmy.cz/company/13472488-liberske-lahudky-praha-smichov.html','web':'https://www.liberskelahudky.cz/prodejna/ostrovskeho/','drive':'https://drive.google.com/drive/folders/1xdUSXtIVOccfHgMQA6_nSSFLQCCn6Yk4','parking':'Velmi špatné','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-17:00'],'zmrzlina':3,'nfc':0,'lcd':2,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So 10:00-17:00, Ne 10:00-16:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'14','code':'51','lat':50.102,'lng':14.4693,'name':'Palmovka Cukrárna','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png','type':'Ulice','addr':'Na Žertvách 107/8, 180 00 Praha 8','tel':'+420 731 151 317','email':'palmovka@liberskelahudky.cz','vedouci':'Gabriela Dvořáková','vedouciTel':'+420 731 151 317','obchZast':'Richard Sviták','wolt':'','gmaps':'','firmy':'','web':'https://www.liberskelahudky.cz/prodejna/palmovka-cukrarna/','drive':'https://drive.google.com/drive/folders/1I2dwZblrJqxV-nYT4gRUvy6bBViwB35g','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','9:00-18:00','9:00-18:00'],'zmrzlina':3,'nfc':1,'lcd':1,'dvere':1,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','notes':'Do 31.5. zkušební provoz.','saints':{},'exceptions':{}},
-  {'id':'15','code':'67','lat':50.1038,'lng':14.3303,'name':'Ruzyňě','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-829.png','type':'Ulice','addr':'Žukovského 887/4, 161 00 Praha 6','tel':'+420 703 635 650','email':'ruzyne@liberskelahudky.cz','vedouci':'Jakub Hermánek','vedouciTel':'+420 736 681 747','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13472487-liberske-lahudky-praha-ruzyne.html','web':'https://www.liberskelahudky.cz/prodejna/ruzyne/','drive':'https://drive.google.com/drive/folders/1XQzfL9Af5U5WRPYi4Lfrh1Idr1BkeGTf','barrier':true,'seating':true,'eshop':true,'kiosek':false,'vyroba':true,'hours':['06:30-17:00','06:30-17:00','06:30-17:00','06:30-17:00','06:30-16:00','08:00-12:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':2,'dvere':0,'okenko':true,'zmrzHours':'Po-Čt 10:00-16:00, Pá 10:00-15:00, So 10:00-11:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'16','code':'72','lat':50.1109,'lng':14.4899,'name':'Poliklinika Vysočany','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-834.png','type':'Poliklinika','addr':'Sokolovská 810/304, 190 00 Praha 9','tel':'+420 604 271 071','email':'vysocany@liberskelahudky.cz','vedouci':'Jaroslava Krejčí','vedouciTel':'+420 604 271 071','obchZast':'Richard Sviták','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13472486-liberske-lahudky-praha-vysocany.html','web':'https://www.liberskelahudky.cz/prodejna/vysocany/','drive':'https://drive.google.com/drive/folders/1mfvIjvhf9O3a4hYTyHKdrDqlSaNGY0gl','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['7:00-17:00','7:00-17:00','7:00-17:00','7:00-17:00','7:00-16:00','ZAVŘENO','ZAVŘENO'],'zmrzlina':0,'nfc':1,'lcd':2,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
-  {'id':'17','code':'58','lat':49.9519,'lng':14.5122,'name':'Jesenice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-836.png','type':'Mimopražská','addr':'Na Ochoze 474, 252 42 Jesenice','tel':'+420 731 151 311','email':'jesenice@liberskelahudky.cz','vedouci':'','vedouciTel':'','obchZast':'David Fendrych','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13362507-liberske-lahudky-jesenice.html','web':'https://www.liberskelahudky.cz/prodejna/jesenice/','drive':'https://drive.google.com/drive/folders/1CXfIgZdIqGeF0SedzyeChT6jwIpm2JV5','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['06:00-17:30','06:00-17:30','06:00-17:30','06:00-17:30','06:00-17:30','07:00-11:00','ZAVŘENO'],'zmrzlina':0,'nfc':0,'lcd':1,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'mrazak','saints':{},'exceptions':{}},
-  {'id':'18','code':'57','lat':49.9559,'lng':14.4568,'name':'Libeř','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-825.png','type':'Mimopražská','addr':'Libeř 127, 252 41 Dolní Břežany','tel':'+420 739 642 680','email':'prodejnaliber@liberskelahudky.cz','vedouci':'','vedouciTel':'','obchZast':'David Fendrych','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13362506-liberske-lahudky-liber.html','web':'https://www.liberskelahudky.cz/prodejna/liber/','drive':'https://drive.google.com/drive/folders/1hZlSAbV14rLHfYW48Z6UztMkw-h0zIRO','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-12:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':1,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-17:00, So 10:00-11:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
-  {'id':'19','code':'74','lat':48.9745,'lng':14.4744,'name':'České Budějovice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-821.png','type':'Mimopražská','addr':'Hrozná 46/17, 370 01 České Budějovice','tel':'+420 603 755 230','email':'cb.krajinska@liberskelahudky.cz','vedouci':'Zdeněka Pavlíková','vedouciTel':'+420 603 755 230','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13748209-liberske-lahudky-ceske-budejovice-1.html','web':'https://www.liberskelahudky.cz/prodejna/ceske-budejovice/','drive':'https://drive.google.com/drive/folders/1Kk-XJ91ym_GP3rwOtSVBMMmrbtiwjRX4','barrier':false,'seating':false,'eshop':true,'kiosek':false,'vyroba':true,'hours':['7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','8:00-17:00','8:00-17:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-17:00, So-Ne 10:00-14:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
-  {'id':'20','code':'75','lat':50.0756,'lng':14.4326,'name':'I.P. Pavlova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-835.png','type':'Obchodní centrum','addr':'Jugoslávsкá 675/3, 120 00 Praha 2','tel':'+420 604 786 462','email':'ippavlova@liberskelahudky.cz','vedouci':'Tetiana Kravets','vedouciTel':'+420 604 786 462','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://maps.app.goo.gl/2TL6p9ZEBH8gizD6A','firmy':'https://www.firmy.cz/company/13791731-liberske-lahudky-praha-vinohrady.html','web':'https://www.liberskelahudky.cz/prodejna/i-p-pavlova/','drive':'https://drive.google.com/drive/folders/1qYSqxg9OnADVYytcU6btigcWckdtkWPZ','barrier':true,'seating':false,'eshop':false,'kiosek':true,'vyroba':true,'hours':['6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','8:00-19:00','8:00-19:00'],'zmrzlina':3,'nfc':1,'lcd':3,'dvere':1,'okenko':true,'zmrzHours':'Po-Ne 10:00-18:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
-  {'id':'21','code':'76','lat':50.0724,'lng':14.3992,'name':'OC Nový Smíchov','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-837.png','type':'Obchodní centrum','addr':'Štefániksкá 247/17, 150 00 Praha 5','tel':'+420 734 569 346','email':'novysmichov@liberskelahudky.cz','vedouci':'Irena Palinchak','vedouciTel':'+420 776 107 527','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://maps.app.goo.gl/9cVgsccUyPj7Dbxx7','firmy':'','web':'https://www.liberskelahudky.cz/prodejna/novy-smichov/','drive':'https://drive.google.com/drive/folders/1i0w46HLoPysGJBdvQ0MLaG4PEVZckdo4','barrier':false,'seating':false,'eshop':true,'kiosek':false,'vyroba':true,'hours':['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-19:00','8:00-19:00'],'zmrzlina':0,'nfc':0,'lcd':2,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
-  {'id':'22','code':'54','lat':50.0831,'lng':14.4351,'name':'Hlavní nádraží','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-824.png','type':'Dopravní uzel','addr':'Wilsonova 300/8, 110 00 Praha 1','tel':'+420 731 259 525','email':'hlavak@liberskelahudky.cz','vedouci':'Ivona Skrbková','vedouciTel':'+420 731 259 525','obchZast':'David Fendrych','wolt':'','gmaps':'https://maps.app.goo.gl/uc2EkY8VF64ZWi73A','firmy':'https://www.firmy.cz/company/13362498-liberske-lahudky-hlavni-nadrazi.html','web':'https://www.liberskelahudky.cz/prodejna/hlavni-nadrazi/','drive':'https://drive.google.com/drive/folders/1da6I0hrmYqYlZtgXzB_qvU2e_bqbZecp','barrier':true,'seating':false,'eshop':false,'kiosek':true,'vyroba':false,'hours':['6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00'],'zmrzlina':3,'nfc':1,'lcd':2,'dvere':1,'okenko':false,'zmrzHours':'Po-Ne 10:00-22:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}}
+  {'id':'1','planogram':[{'t': 'tv', 'x': 370, 'y': 150, 'label': 'TV', 'rot': 0}, {'t': 'zmrz', 'x': 320, 'y': 180, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'counter', 'x': 300, 'y': 220, 'w': 180, 'h': 45, 'label': 'Pult', 'rot': 0}, {'t': 'pokladna', 'x': 440, 'y': 240, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 480, 'y': 290, 'w': 150, 'h': 40, 'label': 'Chlebíčky, saláty', 'rot': 0}, {'t': 'counter', 'x': 630, 'y': 290, 'w': 80, 'h': 40, 'label': 'Sladké', 'rot': 0}, {'t': 'entrance', 'x': 290, 'y': 290, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 340, 'y': 370, 'label': 'Koš', 'rot': 0}, {'t': 'fridge', 'x': 340, 'y': 400, 'w': 70, 'h': 120, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 350, 'y': 440, 'label': 'TV', 'rot': 90}, {'t': 'fridge', 'x': 620, 'y': 400, 'w': 70, 'h': 120, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 630, 'y': 440, 'label': 'TV', 'rot': 90}],'code':'64','lat':50.0908,'lng':14.4378,'name':'Florenc – Na Poříčí','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-832.png','type':'Ulice','addr':'Biskupská 1065/1, 110 00 Praha 1','tel':'+420 734 233 715','email':'porici@liberskelahudky.cz','vedouci':'Věra Málková','vedouciTel':'+420 734 233 715','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://g.page/Liberske-lahudky-na-porici?share','firmy':'https://www.firmy.cz/company/13362499-liberske-lahudky-praha-florenc.html','web':'https://www.liberskelahudky.cz/prodejna/florenc-na-porici/','drive':'https://drive.google.com/drive/folders/1f6Nvorvfs6rwaDmr8c9sKFiHN5OvxpfC','parking':'','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['06:30-19:00','06:30-19:00','06:30-19:00','06:30-19:00','06:30-19:00','08:00-18:00','08:00-18:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'okenko','notes':'','saints':{},'exceptions':{},'landlord':'','landlordTel':'','landlordEmail':'','leaseEnd':'','area':'','mhd':'','samoLednice':false,'pokladny':0,'kavovar':'','lednice':0,'vahy':0,'pos':'','zmrzFoto':'','zmrzNote':'','techNotes':''},
+  {'id':'2','planogram':[{'t': 'kava', 'x': 180, 'y': 280, 'w': 50, 'h': 70, 'label': 'TV Káva', 'rot': 0}, {'t': 'tv', 'x': 190, 'y': 400, 'label': 'TV', 'rot': 90}, {'t': 'counter', 'x': 250, 'y': 340, 'w': 60, 'h': 120, 'label': 'Sladké', 'rot': 0}, {'t': 'pokladna', 'x': 280, 'y': 320, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 350, 'y': 300, 'w': 90, 'h': 40, 'label': 'Zákusky', 'rot': 0}, {'t': 'counter', 'x': 445, 'y': 300, 'w': 70, 'h': 40, 'label': 'Otevřená vitrína', 'rot': 0}, {'t': 'counter', 'x': 520, 'y': 300, 'w': 200, 'h': 40, 'label': 'Chlebíčky, saláty', 'rot': 0}, {'t': 'pokladna', 'x': 730, 'y': 305, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 780, 'y': 300, 'w': 90, 'h': 40, 'label': 'Teplý bufet, bagety', 'rot': 0}, {'t': 'tv', 'x': 640, 'y': 260, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 710, 'y': 260, 'label': 'TV', 'rot': 0}, {'t': 'zmrz', 'x': 230, 'y': 470, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 420, 'y': 470, 'label': 'Vchod', 'rot': 0}, {'t': 'entrance', 'x': 720, 'y': 470, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 340, 'y': 460, 'label': 'Koš', 'rot': 0}, {'t': 'kos', 'x': 600, 'y': 460, 'label': 'Koš', 'rot': 0}, {'t': 'dirty', 'x': 800, 'y': 420, 'label': 'Špinavé nádobí', 'rot': 0}, {'t': 'table', 'x': 500, 'y': 460, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 680, 'y': 460, 'label': 'stůl', 'rot': 0}],'code':'53','lat':50.082,'lng':14.4248,'name':'Vodičkova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-826.png','type':'Ulice','addr':'Vodičkova 730/9, 110 00 Praha 1','tel':'+420 733 766 054','email':'vodickova@liberskelahudky.cz','vedouci':'Marie Navrátilová','vedouciTel':'+420 733 766 054','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://g.page/LiberskeLahudkyVodickova?share','firmy':'https://www.firmy.cz/company/13362500-liberske-lahudky-praha-nove-mesto.html','web':'https://www.liberskelahudky.cz/prodejna/vodickova/','drive':'https://drive.google.com/drive/folders/1-Pg-bj-uTTyg0xM3jZdc06-SfU5cICSY','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{},'changelog':[]},
+  {'id':'3','planogram':[{'t': 'tv', 'x': 280, 'y': 280, 'label': 'TV', 'rot': 0}, {'t': 'zmrz', 'x': 250, 'y': 300, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'counter', 'x': 300, 'y': 330, 'w': 120, 'h': 40, 'label': 'Polévka', 'rot': 0}, {'t': 'counter', 'x': 430, 'y': 330, 'w': 250, 'h': 40, 'label': 'doplnit', 'rot': 0}, {'t': 'pokladna', 'x': 690, 'y': 335, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 680, 'y': 370, 'w': 50, 'h': 120, 'label': 'doplnit', 'rot': 0}, {'t': 'tv', 'x': 650, 'y': 280, 'label': 'TV', 'rot': 0}, {'t': 'kava', 'x': 740, 'y': 300, 'w': 50, 'h': 70, 'label': 'TV Káva', 'rot': 0}, {'t': 'entrance', 'x': 480, 'y': 500, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 320, 'y': 480, 'label': 'Koš', 'rot': 0}],'code':'68','lat':50.0177,'lng':14.5132,'name':'Háje','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-818.png','type':'Ulice','addr':'Arkalycкá 758/2, 149 00 Praha 11','tel':'+420 703 636 919','email':'haje@liberskelahudky.cz','vedouci':'Lucie Murtingerová','vedouciTel':'+420 703 636 919','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13397290-liberske-lahudky-praha-haje.html','web':'https://www.liberskelahudky.cz/prodejna/haje/','drive':'https://drive.google.com/drive/folders/19H_cUpZex3WAmhTjttgbbaCpikHNas34','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['07:00-19:00','07:00-19:00','07:00-19:00','07:00-19:00','07:00-19:00','08:00-14:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':2,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'4','planogram':[{'t': 'tv', 'x': 330, 'y': 150, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 400, 'y': 160, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 540, 'y': 150, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 610, 'y': 160, 'label': 'TV', 'rot': 0}, {'t': 'kava', 'x': 700, 'y': 160, 'w': 60, 'h': 40, 'label': 'TV Káva', 'rot': 30}, {'t': 'counter', 'x': 250, 'y': 230, 'w': 70, 'h': 40, 'label': 'Zákusky', 'rot': 0}, {'t': 'pokladna', 'x': 330, 'y': 235, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 370, 'y': 230, 'w': 180, 'h': 40, 'label': 'Sladké pečené', 'rot': 0}, {'t': 'pokladna', 'x': 590, 'y': 250, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 600, 'y': 290, 'w': 50, 'h': 100, 'label': 'Teplý bufet', 'rot': 0}, {'t': 'counter', 'x': 600, 'y': 390, 'w': 50, 'h': 80, 'label': 'Chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 700, 'y': 330, 'w': 50, 'h': 140, 'label': 'Pekárna (chléb)', 'rot': 0}, {'t': 'entrance', 'x': 480, 'y': 520, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 180, 'y': 230, 'label': 'Koš', 'rot': 0}, {'t': 'kos', 'x': 450, 'y': 400, 'label': 'Koš', 'rot': 0}],'code':'69','lat':50.0617,'lng':14.4286,'name':'Arkády Pankrác','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-831.png','type':'Obchodní centrum','addr':'Na Pankráci 1727/86, 140 00 Praha 4','tel':'+420 703 635 653','email':'arkady@liberskelahudky.cz','vedouci':'Veronika Hromková','vedouciTel':'+420 703 635 653','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://g.page/liberske-lahudky-arkady?share','firmy':'https://www.firmy.cz/company/13472477-liberske-lahudky-praha-nusle.html','web':'https://www.liberskelahudky.cz/prodejna/arkady-pankrac/','drive':'https://drive.google.com/drive/folders/1SCRPYh3a4U0Oq82KhOHPaQD_jIaCcmyF','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['07:00-21:00','07:00-21:00','07:00-21:00','07:00-21:00','07:00-21:00','09:00-21:00','09:00-21:00'],'zmrzlina':0,'nfc':0,'lcd':4,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
+  {'id':'5','planogram':[{'t': 'kava', 'x': 550, 'y': 230, 'w': 80, 'h': 24, 'label': 'TV Káva', 'rot': 0}, {'t': 'counter', 'x': 330, 'y': 290, 'w': 100, 'h': 45, 'label': 'Pečivo', 'rot': 0}, {'t': 'pokladna', 'x': 470, 'y': 295, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 540, 'y': 290, 'w': 180, 'h': 45, 'label': 'Vážené a chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 720, 'y': 290, 'w': 90, 'h': 45, 'label': 'Teplý pult', 'rot': 0}, {'t': 'entrance', 'x': 400, 'y': 490, 'label': 'Vchod', 'rot': 0}, {'t': 'entrance', 'x': 650, 'y': 490, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 330, 'y': 450, 'label': 'Koš', 'rot': 0}, {'t': 'kos', 'x': 740, 'y': 450, 'label': 'Koš', 'rot': 0}],'code':'66','lat':50.0022,'lng':14.4147,'name':'Poliklinika Modřany','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-833.png','type':'Poliklinika','addr':'Soukalova 3355/3, 143 01 Praha 12','tel':'+420 731 344 934','email':'modrany@liberskelahudky.cz','vedouci':'Monika Mihalova','vedouciTel':'+420 731 344 934','obchZast':'Richard Sviták','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13472485-liberske-lahudky-praha-modrany.html','web':'https://www.liberskelahudky.cz/prodejna/modrany/','drive':'https://drive.google.com/drive/folders/1wzAn9_Ds8Ls0dymWYhxIF6-kpgHiT6Mh','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['07:00-17:00','07:00-17:00','07:00-17:00','07:00-17:00','07:00-14:00','ZAVŘENO','ZAVŘENO'],'zmrzlina':0,'nfc':0,'lcd':2,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
+  {'id':'6','planogram':[{'t': 'tv', 'x': 130, 'y': 160, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 255, 'y': 160, 'label': 'TV', 'rot': 0}, {'t': 'kava', 'x': 385, 'y': 155, 'w': 58, 'h': 46, 'label': 'Káva', 'rot': 0}, {'t': 'tv', 'x': 485, 'y': 160, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 610, 'y': 160, 'label': 'TV', 'rot': 0}, {'t': 'counter', 'x': 115, 'y': 290, 'w': 125, 'h': 60, 'label': 'Dezerty otevřená vitrína', 'rot': 0}, {'t': 'counter', 'x': 245, 'y': 290, 'w': 115, 'h': 60, 'label': 'Teplý pult + bagety', 'rot': 0}, {'t': 'counter', 'x': 365, 'y': 290, 'w': 125, 'h': 60, 'label': 'Chlebíčky, pomazánky', 'rot': 0}, {'t': 'pokladna', 'x': 495, 'y': 300, 'label': '', 'rot': 0}, {'t': 'pokladna', 'x': 545, 'y': 300, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 595, 'y': 290, 'w': 95, 'h': 60, 'label': 'Sladké', 'rot': 0}, {'t': 'counter', 'x': 695, 'y': 290, 'w': 95, 'h': 60, 'label': 'Dorty', 'rot': 0}, {'t': 'wall', 'x': 800, 'y': 160, 'w': 32, 'h': 400, 'label': 'zeď', 'rot': 0}, {'t': 'zmrz', 'x': 855, 'y': 300, 'w': 60, 'h': 90, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 60, 'y': 400, 'w': 60, 'h': 70, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 745, 'y': 420, 'label': 'Koš', 'rot': 0}, {'t': 'dirty', 'x': 750, 'y': 490, 'w': 60, 'h': 60, 'label': 'Špinavé nádobí', 'rot': 0}, {'t': 'table', 'x': 140, 'y': 545, 'w': 100, 'h': 40, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 315, 'y': 545, 'w': 100, 'h': 40, 'label': 'stůl', 'rot': 0}, {'t': 'kos', 'x': 545, 'y': 535, 'label': 'Koš', 'rot': 0}, {'t': 'entrance', 'x': 610, 'y': 555, 'w': 70, 'h': 46, 'label': 'Vchod', 'rot': 0}, {'t': 'table', 'x': 710, 'y': 550, 'w': 100, 'h': 36, 'label': 'stůl', 'rot': 0}],'code':'70','lat':50.054,'lng':14.4495,'name':'DBK Olbrachtova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-827.png','type':'Obchodní centrum','addr':'Olbrachtova 1946/64, 140 00 Praha 4','tel':'+420 703 635 637','email':'dbk@liberskelahudky.cz','vedouci':'Erzsebét Rápova','vedouciTel':'+420 774 293 018','obchZast':'Richard Sviták','wolt':'','gmaps':'https://goo.gl/maps/bMQRtWEcLq1n3y6g9','firmy':'https://www.firmy.cz/company/13472484-liberske-lahudky-praha-olbrachtova.html','web':'https://www.liberskelahudky.cz/prodejna/dbk-olbrachtova/','drive':'https://drive.google.com/drive/folders/1ihnJzpIQFvdmQdZbPn97cdvfUjch9ist','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-14:00','ZAVŘENO'],'zmrzlina':5,'nfc':0,'lcd':4,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'7','planogram':[{'t': 'tv', 'x': 370, 'y': 230, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 440, 'y': 230, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 560, 'y': 230, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 630, 'y': 230, 'label': 'TV', 'rot': 0}, {'t': 'dirty', 'x': 280, 'y': 250, 'label': 'Špinavé', 'rot': 0}, {'t': 'counter', 'x': 370, 'y': 290, 'w': 90, 'h': 45, 'label': 'doplnit', 'rot': 0}, {'t': 'counter', 'x': 460, 'y': 290, 'w': 90, 'h': 45, 'label': 'doplnit', 'rot': 0}, {'t': 'counter', 'x': 550, 'y': 290, 'w': 90, 'h': 45, 'label': 'doplnit', 'rot': 0}, {'t': 'counter', 'x': 640, 'y': 290, 'w': 90, 'h': 45, 'label': 'doplnit', 'rot': 0}, {'t': 'kiosek', 'x': 530, 'y': 400, 'label': '', 'rot': 0}, {'t': 'tv', 'x': 570, 'y': 390, 'label': 'TV', 'rot': 180}, {'t': 'tv', 'x': 620, 'y': 390, 'label': 'TV', 'rot': 180}, {'t': 'kos', 'x': 280, 'y': 410, 'label': 'Koš', 'rot': 0}, {'t': 'kos', 'x': 480, 'y': 410, 'label': 'Koš', 'rot': 0}],'code':'65','lat':50.0486,'lng':14.4528,'name':'Poliklinika Budějovická','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-806.png','type':'Poliklinika','addr':'Antala Staška 1670/80, 140 00 Praha 4','tel':'+420 734 233 712','email':'budejovicka@liberskelahudky.cz','vedouci':'Farzanh Yazdaniová','vedouciTel':'+420 734 233 712','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://g.page/LiberskeLahudkyKrc?share','firmy':'https://www.firmy.cz/company/13472483-liberske-lahudky-praha-krc.html','web':'https://www.liberskelahudky.cz/prodejna/budejovicka/','drive':'https://drive.google.com/drive/folders/1YB9efqdIFz5s4eV8iFRGD7uW9T04QuD_','parking':'Bezbarérový přístup','barrier':true,'seating':true,'eshop':false,'kiosek':false,'vyroba':true,'hours':['06:30-18:00','06:30-18:00','06:30-18:00','06:30-18:00','06:30-17:00','ZAVŘENO','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':6,'dvere':0,'okenko':false,'zmrzHours':'Po-Čt 10:00-17:00, Pá 10:00-16:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
+  {'id':'8','planogram':[{'t': 'kava', 'x': 420, 'y': 180, 'w': 60, 'h': 24, 'label': 'TV Káva', 'rot': 0}, {'t': 'tv', 'x': 520, 'y': 180, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 600, 'y': 180, 'label': 'TV polévky', 'rot': 0}, {'t': 'counter', 'x': 370, 'y': 230, 'w': 90, 'h': 40, 'label': 'Smažené', 'rot': 0}, {'t': 'counter', 'x': 500, 'y': 230, 'w': 90, 'h': 40, 'label': 'doplnit', 'rot': 0}, {'t': 'counter', 'x': 600, 'y': 230, 'w': 90, 'h': 40, 'label': 'doplnit', 'rot': 0}, {'t': 'counter', 'x': 690, 'y': 230, 'w': 80, 'h': 40, 'label': 'Cukrárna', 'rot': 0}, {'t': 'pokladna', 'x': 310, 'y': 250, 'label': '', 'rot': 0}, {'t': 'pokladna', 'x': 760, 'y': 235, 'label': '', 'rot': 0}, {'t': 'zmrz', 'x': 790, 'y': 290, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'counter', 'x': 290, 'y': 290, 'w': 50, 'h': 130, 'label': 'Dezerty a pomazánky', 'rot': 0}, {'t': 'counter', 'x': 230, 'y': 370, 'w': 60, 'h': 40, 'label': 'Bagety', 'rot': 0}, {'t': 'fridge', 'x': 430, 'y': 320, 'w': 50, 'h': 110, 'label': 'Lednice', 'rot': 0}, {'t': 'entrance', 'x': 180, 'y': 400, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 370, 'y': 440, 'label': 'Koš', 'rot': 0}],'code':'60','lat':50.0283,'lng':14.4488,'name':'Krč – Thomayerova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-819.png','type':'Poliklinika','addr':'Vídeňská 800, 140 00 Praha 4','tel':'+420 734 233 714','email':'krc@liberskelahudky.cz','vedouci':'Radka Přibylová','vedouciTel':'+420 734 233 714','obchZast':'Richard Sviták','wolt':'','gmaps':'https://g.page/LiberskeLahudkyKrc?share','firmy':'https://www.firmy.cz/company/13472483-liberske-lahudky-praha-krc.html','web':'https://www.liberskelahudky.cz/prodejna/krc-thomayerova/','drive':'https://drive.google.com/drive/folders/1vJund0hCDQBv0vqiilGzdw-lmLnjGTkL','barrier':true,'seating':true,'eshop':false,'kiosek':false,'vyroba':true,'hours':['06:15-17:00','06:15-17:00','06:15-17:00','06:15-17:00','06:15-17:00','08:00-17:00','09:00-16:00'],'zmrzlina':5,'nfc':0,'lcd':2,'dvere':0,'okenko':true,'zmrzHours':'Po-So 10:00-16:00, Ne 10:00-15:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'9','planogram':[{'t': 'kava', 'x': 280, 'y': 330, 'w': 50, 'h': 60, 'label': 'TV Káva', 'rot': 0}, {'t': 'tv', 'x': 285, 'y': 430, 'label': 'TV', 'rot': 90}, {'t': 'tv', 'x': 285, 'y': 500, 'label': 'TV', 'rot': 90}, {'t': 'counter', 'x': 340, 'y': 380, 'w': 50, 'h': 130, 'label': 'Sladké', 'rot': 0}, {'t': 'pokladna', 'x': 360, 'y': 360, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 420, 'y': 350, 'w': 120, 'h': 40, 'label': 'Chlebíčky a pomazánky', 'rot': 0}, {'t': 'counter', 'x': 550, 'y': 350, 'w': 120, 'h': 40, 'label': 'Teplé a smažené', 'rot': 0}, {'t': 'counter', 'x': 680, 'y': 350, 'w': 100, 'h': 40, 'label': 'Teplý pult', 'rot': 0}, {'t': 'zmrz', 'x': 270, 'y': 540, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 440, 'y': 540, 'label': 'Vchod', 'rot': 0}],'code':'52','lat':50.1022,'lng':14.4356,'name':'Letná – Strossmayerovo nám.','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-830.png','type':'Ulice','addr':'Dukelských hrdinů 691/33, 170 00 Praha 7','tel':'+420 739 047 959','email':'dukelskychhrdinu@liberskelahudky.cz','vedouci':'Irena Bažová','vedouciTel':'+420 739 047 959','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13539384-liberske-lahudky-praha-holesovice-2.html','web':'https://www.liberskelahudky.cz/prodejna/letna/','drive':'https://drive.google.com/drive/folders/1vU61lJiy1QUbVRGcmUpeqD0HwixG3h4N','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':1,'lcd':2,'dvere':1,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
+  {'id':'10','planogram':[{'t': 'tv', 'x': 320, 'y': 240, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 420, 'y': 240, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 680, 'y': 250, 'label': 'TV', 'rot': 30}, {'t': 'counter', 'x': 280, 'y': 300, 'w': 100, 'h': 45, 'label': 'Dezerty otevřená vitrína', 'rot': 0}, {'t': 'counter', 'x': 385, 'y': 300, 'w': 110, 'h': 45, 'label': 'Teplý pult + bagety', 'rot': 0}, {'t': 'counter', 'x': 500, 'y': 300, 'w': 100, 'h': 45, 'label': 'Pomazánky Chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 605, 'y': 300, 'w': 80, 'h': 45, 'label': 'Sladké', 'rot': 0}, {'t': 'pokladna', 'x': 640, 'y': 330, 'label': '', 'rot': 0}, {'t': 'pokladna', 'x': 680, 'y': 350, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 630, 'y': 370, 'w': 50, 'h': 100, 'label': 'Sladké', 'rot': 0}, {'t': 'tv', 'x': 700, 'y': 380, 'label': 'TV', 'rot': 90}, {'t': 'zmrz', 'x': 680, 'y': 490, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 300, 'y': 490, 'label': 'Vchod', 'rot': 0}, {'t': 'entrance', 'x': 560, 'y': 490, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 400, 'y': 480, 'label': 'Koš', 'rot': 0}, {'t': 'dirty', 'x': 260, 'y': 430, 'label': 'Špinavé nádobí', 'rot': 0}],'code':'73','lat':50.1044,'lng':14.4487,'name':'Holešovice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-820.png','type':'Ulice','addr':'Komunardů 1126/31, 170 00 Praha 7','tel':'+420 605 549 235','email':'holesovice@liberskelahudky.cz','vedouci':'Miroslava Smuk','vedouciTel':'+420 605 549 235','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13539385-liberske-lahudky-praha-holesovice.html','web':'https://www.liberskelahudky.cz/prodejna/holesovice/','drive':'https://drive.google.com/drive/folders/1gmd4Y7lE0SmoyVRdgdG8tZ6apApkCfQa','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 9:00-17:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'11','planogram':[{'t': 'kava', 'x': 280, 'y': 220, 'w': 80, 'h': 24, 'label': 'TV Káva', 'rot': 0}, {'t': 'tv', 'x': 540, 'y': 220, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 650, 'y': 220, 'label': 'TV', 'rot': 0}, {'t': 'counter', 'x': 220, 'y': 290, 'w': 70, 'h': 45, 'label': 'Dezerty a sladké', 'rot': 0}, {'t': 'counter', 'x': 295, 'y': 290, 'w': 70, 'h': 45, 'label': 'Dezerty a sladké', 'rot': 0}, {'t': 'counter', 'x': 370, 'y': 290, 'w': 70, 'h': 45, 'label': 'Dezerty a sladké', 'rot': 0}, {'t': 'counter', 'x': 445, 'y': 290, 'w': 90, 'h': 45, 'label': 'Kasa', 'rot': 0}, {'t': 'counter', 'x': 540, 'y': 290, 'w': 80, 'h': 45, 'label': 'Pomazánky', 'rot': 0}, {'t': 'counter', 'x': 620, 'y': 290, 'w': 80, 'h': 45, 'label': 'Chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 700, 'y': 290, 'w': 60, 'h': 45, 'label': 'Teplé smažené', 'rot': 0}, {'t': 'counter', 'x': 760, 'y': 290, 'w': 60, 'h': 45, 'label': 'Samoobslužná', 'rot': 0}, {'t': 'zmrz', 'x': 230, 'y': 470, 'label': 'Zmrzlinové okénko', 'rot': 0}, {'t': 'entrance', 'x': 370, 'y': 470, 'label': 'Vchod', 'rot': 0}, {'t': 'entrance', 'x': 780, 'y': 390, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 560, 'y': 450, 'label': 'Koš', 'rot': 0}],'code':'71','lat':50.1001,'lng':14.3879,'name':'Dejvice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-823.png','type':'Ulice','addr':'Kafkova 580/26, 160 00 Praha 6','tel':'+420 703 635 658','email':'dejvice@liberskelahudky.cz','vedouci':'Petr Šindelář','vedouciTel':'+420 703 635 658','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://goo.gl/maps/scAnu36dig1nV26XA','firmy':'https://www.firmy.cz/company/13362503-liberske-lahudky-praha-dejvice.html','web':'https://www.liberskelahudky.cz/prodejna/dejvice/','drive':'https://drive.google.com/drive/folders/1z5qJrCcX96r-LY67lr_ofjCnlbWdbAU0','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':1,'lcd':2,'dvere':2,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'12','planogram':[{'t': 'tv', 'x': 130, 'y': 185, 'label': 'TV', 'rot': 30}, {'t': 'tv', 'x': 105, 'y': 300, 'label': 'TV', 'rot': 90}, {'t': 'tv', 'x': 105, 'y': 390, 'label': 'TV', 'rot': 90}, {'t': 'tv', 'x': 105, 'y': 480, 'label': 'TV', 'rot': 90}, {'t': 'tv', 'x': 640, 'y': 160, 'label': 'TV', 'rot': 0}, {'t': 'counter', 'x': 500, 'y': 245, 'w': 270, 'h': 48, 'label': 'Chlebíčky a saláty', 'rot': 0}, {'t': 'counter', 'x': 370, 'y': 240, 'w': 110, 'h': 50, 'label': 'teplý bufet, bagety', 'rot': -40}, {'t': 'pokladna', 'x': 300, 'y': 300, 'label': '', 'rot': -40}, {'t': 'pokladna', 'x': 240, 'y': 350, 'label': '', 'rot': -40}, {'t': 'counter', 'x': 230, 'y': 400, 'w': 55, 'h': 110, 'label': 'sladké', 'rot': 0}, {'t': 'counter', 'x': 230, 'y': 515, 'w': 55, 'h': 120, 'label': 'sendviče', 'rot': 0}, {'t': 'zmrz', 'x': 110, 'y': 560, 'w': 80, 'h': 52, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'table', 'x': 720, 'y': 350, 'w': 44, 'h': 230, 'label': 'stůl', 'rot': 0}, {'t': 'dirty', 'x': 640, 'y': 580, 'w': 56, 'h': 56, 'label': 'Špinavé nádobí', 'rot': 0}, {'t': 'kos', 'x': 735, 'y': 575, 'label': 'Koš', 'rot': 0}, {'t': 'entrance', 'x': 400, 'y': 590, 'w': 80, 'h': 52, 'label': 'Vchod', 'rot': 0}],'code':'51','lat':50.1018,'lng':14.469,'name':'Palmovka','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png','type':'Ulice','addr':'Na Žertvách 107/8, 180 00 Praha 8','tel':'+420 731 151 317','email':'palmovka@liberskelahudky.cz','vedouci':'Gabriela Dvořáková','vedouciTel':'+420 731 151 317','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13362492-liberske-lahudky-praha-liben.html','web':'https://www.liberskelahudky.cz/prodejna/palmovka/','drive':'https://drive.google.com/drive/folders/1Toqt0Pbmb4eccvXAx6yQ3fffW_fmJg0l','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-18:00'],'zmrzlina':3,'nfc':0,'lcd':4,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
+  {'id':'13','planogram':[{'t': 'tv', 'x': 330, 'y': 140, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 425, 'y': 140, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 520, 'y': 150, 'label': 'TV', 'rot': 30}, {'t': 'zmrz', 'x': 240, 'y': 195, 'w': 95, 'h': 56, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'wall', 'x': 195, 'y': 270, 'w': 38, 'h': 52, 'label': 'zeď', 'rot': 0}, {'t': 'counter', 'x': 240, 'y': 270, 'w': 120, 'h': 52, 'label': 'Dorty', 'rot': 0}, {'t': 'counter', 'x': 365, 'y': 270, 'w': 130, 'h': 52, 'label': 'Sladké pečivo', 'rot': 0}, {'t': 'pokladna', 'x': 520, 'y': 255, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 505, 'y': 300, 'w': 65, 'h': 90, 'label': 'Pult', 'rot': 0}, {'t': 'pokladna', 'x': 520, 'y': 330, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 505, 'y': 395, 'w': 65, 'h': 100, 'label': 'Chlebíčky, saláty', 'rot': 0}, {'t': 'counter', 'x': 505, 'y': 500, 'w': 65, 'h': 95, 'label': 'Teplý bufet', 'rot': 0}, {'t': 'counter', 'x': 505, 'y': 600, 'w': 65, 'h': 100, 'label': 'Otevřený pult', 'rot': 0}, {'t': 'kos', 'x': 215, 'y': 340, 'label': 'Koš', 'rot': 0}, {'t': 'dirty', 'x': 225, 'y': 420, 'w': 56, 'h': 56, 'label': 'Špinavé nádobí', 'rot': 0}, {'t': 'table', 'x': 230, 'y': 500, 'w': 44, 'h': 110, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 225, 'y': 630, 'w': 60, 'h': 60, 'label': 'stůl', 'rot': 0}, {'t': 'entrance', 'x': 350, 'y': 690, 'w': 90, 'h': 55, 'label': 'Vchod', 'rot': 0}],'code':'50','lat':50.0732,'lng':14.4022,'name':'Anděl – Ostrovského','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-828.png','type':'Ulice','addr':'Ostrovského 33/2, 150 00 Praha 5','tel':'+420 731 151 313','email':'ostrovskeho@liberskelahudky.cz','vedouci':'Olga Fritschová','vedouciTel':'+420 731 151 313','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://g.page/LiberskeLahudkySmichov?share','firmy':'https://www.firmy.cz/company/13472488-liberske-lahudky-praha-smichov.html','web':'https://www.liberskelahudky.cz/prodejna/ostrovskeho/','drive':'https://drive.google.com/drive/folders/1xdUSXtIVOccfHgMQA6_nSSFLQCCn6Yk4','parking':'Velmi špatné','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':true,'hours':['6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','6:30-19:00','8:00-18:00','8:00-17:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':true,'zmrzHours':'Po-Pá 10:00-18:00, So 10:00-17:00, Ne 10:00-16:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'14','planogram':[{'t': 'kava', 'x': 360, 'y': 245, 'w': 70, 'h': 48, 'label': 'Káva', 'rot': 0}, {'t': 'zmrz', 'x': 490, 'y': 255, 'w': 80, 'h': 50, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'pokladna', 'x': 310, 'y': 320, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 300, 'y': 330, 'w': 130, 'h': 48, 'label': 'Pult', 'rot': 0}, {'t': 'counter', 'x': 435, 'y': 330, 'w': 160, 'h': 48, 'label': 'Zákusky', 'rot': 0}, {'t': 'kos', 'x': 300, 'y': 520, 'label': 'Koš', 'rot': 0}, {'t': 'entrance', 'x': 400, 'y': 530, 'w': 80, 'h': 55, 'label': 'Vchod', 'rot': 0}, {'t': 'table', 'x': 545, 'y': 520, 'w': 52, 'h': 52, 'label': 'stůl', 'rot': 0}],'code':'51','lat':50.102,'lng':14.4693,'name':'Palmovka Cukrárna','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-822.png','type':'Ulice','addr':'Na Žertvách 107/8, 180 00 Praha 8','tel':'+420 731 151 317','email':'palmovka@liberskelahudky.cz','vedouci':'Gabriela Dvořáková','vedouciTel':'+420 731 151 317','obchZast':'Richard Sviták','wolt':'','gmaps':'','firmy':'','web':'https://www.liberskelahudky.cz/prodejna/palmovka-cukrarna/','drive':'https://drive.google.com/drive/folders/1I2dwZblrJqxV-nYT4gRUvy6bBViwB35g','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','8:00-19:00','9:00-18:00','9:00-18:00'],'zmrzlina':3,'nfc':1,'lcd':0,'dvere':1,'okenko':false,'zmrzHours':'Po-Pá 10:00-18:00, So-Ne 10:00-17:00','zmrzVydej':true,'zmrzType':'prodejna','notes':'Do 31.5. zkušební provoz.','saints':{},'exceptions':{}},
+  {'id':'15','planogram':[{'t': 'counter', 'x': 330, 'y': 280, 'w': 50, 'h': 80, 'label': 'Dorty / Sladké', 'rot': 0}, {'t': 'zmrz', 'x': 430, 'y': 270, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'pokladna', 'x': 370, 'y': 350, 'label': '', 'rot': 0}, {'t': 'pokladna', 'x': 410, 'y': 370, 'label': '', 'rot': 0}, {'t': 'tv', 'x': 540, 'y': 300, 'label': 'TV', 'rot': 0}, {'t': 'counter', 'x': 450, 'y': 390, 'w': 90, 'h': 40, 'label': 'chlebíčky', 'rot': 330}, {'t': 'counter', 'x': 540, 'y': 390, 'w': 100, 'h': 40, 'label': 'Bagety, teplý bufet', 'rot': 0}, {'t': 'counter', 'x': 640, 'y': 390, 'w': 90, 'h': 40, 'label': 'Otevřená vitrína', 'rot': 0}, {'t': 'dirty', 'x': 200, 'y': 330, 'label': 'Špinavé nádobí', 'rot': 0}, {'t': 'entrance', 'x': 340, 'y': 520, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 480, 'y': 500, 'label': 'Koš', 'rot': 0}, {'t': 'table', 'x': 200, 'y': 420, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 270, 'y': 420, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 340, 'y': 420, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 200, 'y': 470, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 270, 'y': 470, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 340, 'y': 470, 'label': 'stůl', 'rot': 0}],'code':'67','lat':50.1038,'lng':14.3303,'name':'Ruzyňě','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-829.png','type':'Ulice','addr':'Žukovského 887/4, 161 00 Praha 6','tel':'+420 703 635 650','email':'ruzyne@liberskelahudky.cz','vedouci':'Jakub Hermánek','vedouciTel':'+420 736 681 747','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13472487-liberske-lahudky-praha-ruzyne.html','web':'https://www.liberskelahudky.cz/prodejna/ruzyne/','drive':'https://drive.google.com/drive/folders/1XQzfL9Af5U5WRPYi4Lfrh1Idr1BkeGTf','barrier':true,'seating':true,'eshop':true,'kiosek':false,'vyroba':true,'hours':['06:30-17:00','06:30-17:00','06:30-17:00','06:30-17:00','06:30-16:00','08:00-12:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':1,'dvere':0,'okenko':true,'zmrzHours':'Po-Čt 10:00-16:00, Pá 10:00-15:00, So 10:00-11:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'16','planogram':[{'t': 'counter', 'x': 350, 'y': 300, 'w': 200, 'h': 45, 'label': 'Pult', 'rot': 0}, {'t': 'pokladna', 'x': 560, 'y': 305, 'label': '', 'rot': 0}, {'t': 'entrance', 'x': 440, 'y': 450, 'label': 'Vchod', 'rot': 0}],'code':'72','lat':50.1109,'lng':14.4899,'name':'Poliklinika Vysočany','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-834.png','type':'Poliklinika','addr':'Sokolovská 810/304, 190 00 Praha 9','tel':'+420 604 271 071','email':'vysocany@liberskelahudky.cz','vedouci':'Jaroslava Krejčí','vedouciTel':'+420 604 271 071','obchZast':'Richard Sviták','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13472486-liberske-lahudky-praha-vysocany.html','web':'https://www.liberskelahudky.cz/prodejna/vysocany/','drive':'https://drive.google.com/drive/folders/1mfvIjvhf9O3a4hYTyHKdrDqlSaNGY0gl','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['7:00-17:00','7:00-17:00','7:00-17:00','7:00-17:00','7:00-16:00','ZAVŘENO','ZAVŘENO'],'zmrzlina':0,'nfc':1,'lcd':2,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
+  {'id':'17','planogram':[{'t': 'kava', 'x': 290, 'y': 280, 'w': 60, 'h': 40, 'label': 'Káva', 'rot': 0}, {'t': 'pokladna', 'x': 370, 'y': 330, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 420, 'y': 300, 'w': 140, 'h': 40, 'label': 'Chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 565, 'y': 300, 'w': 160, 'h': 40, 'label': 'Pomazánky a saláty', 'rot': 0}, {'t': 'counter', 'x': 340, 'y': 370, 'w': 50, 'h': 120, 'label': 'Sladké', 'rot': 0}, {'t': 'zmrz', 'x': 700, 'y': 400, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'entrance', 'x': 580, 'y': 490, 'label': 'Vchod', 'rot': 0}],'code':'58','lat':49.9519,'lng':14.5122,'name':'Jesenice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-836.png','type':'Mimopražská','addr':'Na Ochoze 474, 252 42 Jesenice','tel':'+420 731 151 311','email':'jesenice@liberskelahudky.cz','vedouci':'','vedouciTel':'','obchZast':'David Fendrych','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13362507-liberske-lahudky-jesenice.html','web':'https://www.liberskelahudky.cz/prodejna/jesenice/','drive':'https://drive.google.com/drive/folders/1CXfIgZdIqGeF0SedzyeChT6jwIpm2JV5','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['06:00-17:30','06:00-17:30','06:00-17:30','06:00-17:30','06:00-17:30','07:00-11:00','ZAVŘENO'],'zmrzlina':0,'nfc':0,'lcd':1,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'mrazak','saints':{},'exceptions':{}},
+  {'id':'18','planogram':[{'t': 'kava', 'x': 280, 'y': 290, 'w': 60, 'h': 60, 'label': 'Káva', 'rot': 0}, {'t': 'counter', 'x': 340, 'y': 340, 'w': 50, 'h': 130, 'label': 'Dezerty a saláty', 'rot': 0}, {'t': 'counter', 'x': 360, 'y': 320, 'w': 100, 'h': 40, 'label': 'Kasa', 'rot': 330}, {'t': 'counter', 'x': 470, 'y': 300, 'w': 180, 'h': 40, 'label': 'Pomazánky a smažené', 'rot': 0}, {'t': 'zmrz', 'x': 500, 'y': 450, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 600, 'y': 480, 'label': 'Vchod', 'rot': 0}],'code':'57','lat':49.9559,'lng':14.4568,'name':'Libeř','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-825.png','type':'Mimopražská','addr':'Libeř 127, 252 41 Dolní Břežany','tel':'+420 739 642 680','email':'prodejnaliber@liberskelahudky.cz','vedouci':'','vedouciTel':'','obchZast':'David Fendrych','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13362506-liberske-lahudky-liber.html','web':'https://www.liberskelahudky.cz/prodejna/liber/','drive':'https://drive.google.com/drive/folders/1hZlSAbV14rLHfYW48Z6UztMkw-h0zIRO','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-12:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':1,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-17:00, So 10:00-11:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
+  {'id':'19','planogram':[],'code':'74','lat':48.9745,'lng':14.4744,'name':'České Budějovice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-821.png','type':'Mimopražská','addr':'Hrozná 46/17, 370 01 České Budějovice','tel':'+420 603 755 230','email':'cb.krajinska@liberskelahudky.cz','vedouci':'Zdeněka Pavlíková','vedouciTel':'+420 603 755 230','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13748209-liberske-lahudky-ceske-budejovice-1.html','web':'https://www.liberskelahudky.cz/prodejna/ceske-budejovice/','drive':'https://drive.google.com/drive/folders/1Kk-XJ91ym_GP3rwOtSVBMMmrbtiwjRX4','barrier':false,'seating':false,'eshop':true,'kiosek':false,'vyroba':true,'hours':['7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','8:00-17:00','8:00-17:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-17:00, So-Ne 10:00-14:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
+  {'id':'20','planogram':[{'t': 'tv', 'x': 820, 'y': 330, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 340, 'y': 350, 'label': 'TV', 'rot': 330}, {'t': 'tv', 'x': 300, 'y': 400, 'label': 'TV', 'rot': 330}, {'t': 'tv', 'x': 290, 'y': 500, 'label': 'TV', 'rot': 90}, {'t': 'counter', 'x': 400, 'y': 420, 'w': 50, 'h': 130, 'label': 'Pečivo', 'rot': 0}, {'t': 'pokladna', 'x': 420, 'y': 400, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 480, 'y': 390, 'w': 180, 'h': 40, 'label': 'Vážené a chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 670, 'y': 390, 'w': 110, 'h': 40, 'label': 'Teplý pult', 'rot': 0}, {'t': 'counter', 'x': 690, 'y': 450, 'w': 50, 'h': 100, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 700, 'y': 470, 'label': 'TV', 'rot': 90}, {'t': 'zmrz', 'x': 280, 'y': 560, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 440, 'y': 560, 'label': 'Vchod', 'rot': 0}, {'t': 'kiosek', 'x': 620, 'y': 540, 'label': 'Kiosek oboustranný', 'rot': 0}],'code':'75','lat':50.0756,'lng':14.4326,'name':'I.P. Pavlova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-835.png','type':'Obchodní centrum','addr':'Jugoslávsкá 675/3, 120 00 Praha 2','tel':'+420 604 786 462','email':'ippavlova@liberskelahudky.cz','vedouci':'Tetiana Kravets','vedouciTel':'+420 604 786 462','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://maps.app.goo.gl/2TL6p9ZEBH8gizD6A','firmy':'https://www.firmy.cz/company/13791731-liberske-lahudky-praha-vinohrady.html','web':'https://www.liberskelahudky.cz/prodejna/i-p-pavlova/','drive':'https://drive.google.com/drive/folders/1qYSqxg9OnADVYytcU6btigcWckdtkWPZ','barrier':true,'seating':false,'eshop':false,'kiosek':true,'vyroba':true,'hours':['6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','8:00-19:00','8:00-19:00'],'zmrzlina':3,'nfc':1,'lcd':4,'dvere':1,'okenko':true,'zmrzHours':'Po-Ne 10:00-18:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
+  {'id':'21','planogram':[{'t': 'tv', 'x': 370, 'y': 330, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 680, 'y': 330, 'label': 'TV', 'rot': 0}, {'t': 'counter', 'x': 320, 'y': 380, 'w': 120, 'h': 40, 'label': 'Sladké', 'rot': 0}, {'t': 'pokladna', 'x': 450, 'y': 385, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 490, 'y': 380, 'w': 60, 'h': 40, 'label': 'Pult', 'rot': 0}, {'t': 'pokladna', 'x': 550, 'y': 385, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 580, 'y': 380, 'w': 90, 'h': 40, 'label': 'Sladké', 'rot': 0}, {'t': 'counter', 'x': 675, 'y': 380, 'w': 90, 'h': 40, 'label': 'Teplý bufet', 'rot': 0}, {'t': 'counter', 'x': 770, 'y': 380, 'w': 100, 'h': 40, 'label': 'Chlebíčky, saláty', 'rot': 0}, {'t': 'fridge', 'x': 720, 'y': 430, 'w': 70, 'h': 120, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 790, 'y': 470, 'label': 'TV', 'rot': 90}, {'t': 'entrance', 'x': 620, 'y': 520, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 440, 'y': 500, 'label': 'Koš', 'rot': 0}, {'t': 'table', 'x': 360, 'y': 500, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 540, 'y': 500, 'label': 'stůl', 'rot': 0}],'code':'76','lat':50.0724,'lng':14.3992,'name':'OC Nový Smíchov','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-837.png','type':'Obchodní centrum','addr':'Štefániksкá 247/17, 150 00 Praha 5','tel':'+420 734 569 346','email':'novysmichov@liberskelahudky.cz','vedouci':'Irena Palinchak','vedouciTel':'+420 776 107 527','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://maps.app.goo.gl/9cVgsccUyPj7Dbxx7','firmy':'','web':'https://www.liberskelahudky.cz/prodejna/novy-smichov/','drive':'https://drive.google.com/drive/folders/1i0w46HLoPysGJBdvQ0MLaG4PEVZckdo4','barrier':false,'seating':false,'eshop':true,'kiosek':false,'vyroba':true,'hours':['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-19:00','8:00-19:00'],'zmrzlina':0,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
+  {'id':'22','planogram':[{'t': 'entrance', 'x': 255, 'y': 195, 'w': 46, 'h': 190, 'label': 'Vchod', 'rot': 0}, {'t': 'tv', 'x': 365, 'y': 140, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 440, 'y': 140, 'label': 'TV', 'rot': 0}, {'t': 'zmrz', 'x': 300, 'y': 160, 'w': 90, 'h': 52, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'counter', 'x': 290, 'y': 215, 'w': 200, 'h': 46, 'label': 'Pult', 'rot': 0}, {'t': 'pokladna', 'x': 430, 'y': 200, 'label': '', 'rot': 30}, {'t': 'pokladna', 'x': 470, 'y': 230, 'label': '', 'rot': 30}, {'t': 'counter', 'x': 480, 'y': 255, 'w': 110, 'h': 40, 'label': 'Nápoje', 'rot': 30}, {'t': 'counter', 'x': 550, 'y': 320, 'w': 160, 'h': 42, 'label': 'Bagety, teplý bufet', 'rot': 0}, {'t': 'counter', 'x': 715, 'y': 320, 'w': 100, 'h': 42, 'label': 'Sladké', 'rot': 0}, {'t': 'kos', 'x': 290, 'y': 390, 'label': 'Koš', 'rot': 0}, {'t': 'wall', 'x': 255, 'y': 430, 'w': 40, 'h': 230, 'label': 'zeď', 'rot': 0}, {'t': 'fridge', 'x': 305, 'y': 430, 'w': 80, 'h': 230, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 270, 'y': 490, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 270, 'y': 580, 'label': 'TV', 'rot': 0}, {'t': 'kiosek', 'x': 485, 'y': 500, 'w': 70, 'h': 80, 'label': 'Kiosek oboustranný', 'rot': 0}, {'t': 'fridge', 'x': 700, 'y': 430, 'w': 80, 'h': 230, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 790, 'y': 490, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 790, 'y': 580, 'label': 'TV', 'rot': 0}, {'t': 'entrance', 'x': 400, 'y': 665, 'w': 230, 'h': 50, 'label': 'Vchod', 'rot': 0}, {'t': 'table', 'x': 330, 'y': 735, 'w': 66, 'h': 66, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 670, 'y': 735, 'w': 66, 'h': 66, 'label': 'stůl', 'rot': 0}],'code':'54','lat':50.0831,'lng':14.4351,'name':'Hlavní nádraží','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-824.png','type':'Dopravní uzel','addr':'Wilsonova 300/8, 110 00 Praha 1','tel':'+420 731 259 525','email':'hlavak@liberskelahudky.cz','vedouci':'Ivona Skrbková','vedouciTel':'+420 731 259 525','obchZast':'David Fendrych','wolt':'','gmaps':'https://maps.app.goo.gl/uc2EkY8VF64ZWi73A','firmy':'https://www.firmy.cz/company/13362498-liberske-lahudky-hlavni-nadrazi.html','web':'https://www.liberskelahudky.cz/prodejna/hlavni-nadrazi/','drive':'https://drive.google.com/drive/folders/1da6I0hrmYqYlZtgXzB_qvU2e_bqbZecp','barrier':true,'seating':false,'eshop':false,'kiosek':true,'vyroba':false,'hours':['6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00','6:00-23:00'],'zmrzlina':3,'nfc':1,'lcd':4,'dvere':1,'okenko':false,'zmrzHours':'Po-Ne 10:00-22:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}}
 ];
 
 // ─── STATE ───────────────────────────────────────────────────────
@@ -3508,6 +3530,7 @@ function loadFromSheets() {
         'landlord','landlordTel','landlordEmail','leaseEnd','area','mhd','parking','pokladny',
         'techKontakty','techNotes',
         'notes','saints','exceptions','changelog','hours',
+        'planogram','tvs','hoursHoliday','holidayActive','holidayFrom','holidayTo',
         'lat','lng'
       ];
 
@@ -3531,6 +3554,7 @@ function loadFromSheets() {
             var localVal  = local[field];
             var sheetsEmpty = (sheetsVal === undefined || sheetsVal === null || sheetsVal === '');
             if (field === 'hours' && Array.isArray(sheetsVal) && sheetsVal.length === 0) sheetsEmpty = true;
+            if ((field === 'planogram' || field === 'tvs' || field === 'hoursHoliday') && Array.isArray(sheetsVal) && sheetsVal.length === 0) sheetsEmpty = true;
             if ((field === 'saints' || field === 'exceptions') && sheetsVal && typeof sheetsVal === 'object' && Object.keys(sheetsVal).length === 0) {
               if (localVal && typeof localVal === 'object' && Object.keys(localVal).length > 0) sheetsEmpty = true;
             }
@@ -4953,6 +4977,326 @@ function updTV(i, field, val) {
   if (field === 'orient') renderTVList(); // překreslit tlačítka
 }
 
+// ─── PŮDORYS PRODEJNY (planogram) ────────────────────────────────
+var PG_TYPES = {
+  wall:     {fill:'#6B5C4B', stroke:'#4A3E31', tw:'#F5F0E8', shape:'rect',    dw:40,  dh:200},
+  counter:  {fill:'#FFFFFF', stroke:'#B8AA96', tw:'#3A2E22', shape:'rect',    dw:130, dh:52},
+  fridge:   {fill:'#F2F6F9', stroke:'#A9B8C2', tw:'#33434E', shape:'rect',    dw:80,  dh:200},
+  tv:       {fill:'#8E8E93', stroke:'#5F5F63', tw:'#FFFFFF', shape:'tv',      dw:66,  dh:40},
+  zmrz:     {fill:'#F9CBD8', stroke:'#DE8FA4', tw:'#7A2A3E', shape:'cloud',   dw:92,  dh:56},
+  pokladna: {fill:'#C9C2F0', stroke:'#8B7ED4', tw:'#2E2560', shape:'penta',   dw:46,  dh:46},
+  entrance: {fill:'#A7E3B8', stroke:'#57B172', tw:'#12502C', shape:'tri',     dw:90,  dh:52},
+  kos:      {fill:'#EAE7E1', stroke:'#A69C8C', tw:'#4A4238', shape:'cross',   dw:46,  dh:46},
+  table:    {fill:'#F9CDC9', stroke:'#E09A94', tw:'#7A2820', shape:'ellipse', dw:66,  dh:66},
+  kiosek:   {fill:'#FBEFAF', stroke:'#CDB44B', tw:'#5A4A00', shape:'cyl',     dw:70,  dh:82},
+  dirty:    {fill:'#C79632', stroke:'#9C731E', tw:'#FFFFFF', shape:'diamond', dw:60,  dh:60},
+  kava:     {fill:'#8B5A2B', stroke:'#66401C', tw:'#FFFFFF', shape:'rect',    dw:70,  dh:48}
+};
+
+var _pgSelected = null;
+var _pgDrag = null;
+
+function pgSeedFromDefaults(s) {
+  if (s.planogram && s.planogram.length) return;
+  for (var i = 0; i < DEFAULT_STORES.length; i++) {
+    if (DEFAULT_STORES[i].id === s.id && DEFAULT_STORES[i].planogram && DEFAULT_STORES[i].planogram.length) {
+      s.planogram = JSON.parse(JSON.stringify(DEFAULT_STORES[i].planogram));
+      return;
+    }
+  }
+}
+
+function pgEl(NS, tag, attrs) {
+  var n = document.createElementNS(NS, tag);
+  for (var k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+}
+
+function renderPlanogram() {
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  if (!s.planogram) s.planogram = [];
+  pgSeedFromDefaults(s);
+  var svg = document.getElementById('pg-canvas');
+  if (!svg) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  svg.innerHTML = '';
+
+  // ── defs: stiny a gradienty ──
+  var defs = pgEl(NS,'defs',{});
+  defs.innerHTML =
+    '<filter id="pgShadow" x="-30%" y="-30%" width="160%" height="160%">' +
+      '<feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#2a1c10" flood-opacity="0.16"/>' +
+    '</filter>' +
+    '<filter id="pgShadowSel" x="-40%" y="-40%" width="180%" height="180%">' +
+      '<feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#B85032" flood-opacity="0.4"/>' +
+    '</filter>' +
+    '<linearGradient id="pgFloor" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="#FDFCFA"/><stop offset="100%" stop-color="#F5F1EA"/>' +
+    '</linearGradient>';
+  svg.appendChild(defs);
+
+  // ── pozadi ──
+  svg.appendChild(pgEl(NS,'rect',{x:0,y:0,width:1000,height:700,fill:'#FAF8F4'}));
+
+  // ── jemna mrizka ──
+  var grid = pgEl(NS,'g',{opacity:'0.5'});
+  for (var gx=0; gx<=1000; gx+=25) {
+    grid.appendChild(pgEl(NS,'line',{x1:gx,y1:0,x2:gx,y2:700,
+      stroke:'#E6E0D6','stroke-width': (gx % 100 === 0 ? 1 : 0.5)}));
+  }
+  for (var gy=0; gy<=700; gy+=25) {
+    grid.appendChild(pgEl(NS,'line',{x1:0,y1:gy,x2:1000,y2:gy,
+      stroke:'#E6E0D6','stroke-width': (gy % 100 === 0 ? 1 : 0.5)}));
+  }
+  svg.appendChild(grid);
+
+  if (s.planogram.length === 0) {
+    var empty = pgEl(NS,'text',{x:500,y:350,'text-anchor':'middle','font-size':'16',
+      'font-family':'Inter,sans-serif',fill:'#B6A78E'});
+    empty.textContent = 'Zatím prázdné — přidej prvky tlačítky nahoře';
+    svg.appendChild(empty);
+    document.getElementById('pg-selected-info').style.display = 'none';
+    return;
+  }
+
+  // ── podlaha + obrys prodejny ──
+  var minX=9999,minY=9999,maxX=-9999,maxY=-9999;
+  s.planogram.forEach(function(el){
+    var t = PG_TYPES[el.t] || PG_TYPES.counter;
+    var w = el.w || t.dw, hh = el.h || t.dh;
+    if (el.x < minX) minX = el.x;
+    if (el.y < minY) minY = el.y;
+    if (el.x + w > maxX) maxX = el.x + w;
+    if (el.y + hh > maxY) maxY = el.y + hh;
+  });
+  var pad = 34;
+  svg.appendChild(pgEl(NS,'rect',{
+    x:minX-pad, y:minY-pad, width:(maxX-minX)+pad*2, height:(maxY-minY)+pad*2,
+    rx:6, fill:'url(#pgFloor)', stroke:'#3A2E22','stroke-width':3,
+    filter:'url(#pgShadow)', 'pointer-events':'none'
+  }));
+
+  // ── prvky ──
+  s.planogram.forEach(function(el, idx) {
+    var type = PG_TYPES[el.t] || PG_TYPES.counter;
+    var w = el.w || type.dw, h = el.h || type.dh;
+    var sel = (_pgSelected === idx);
+
+    var g = pgEl(NS,'g',{
+      transform:'translate('+el.x+','+el.y+')'+(el.rot?' rotate('+el.rot+','+(w/2)+','+(h/2)+')':''),
+      'data-idx': idx
+    });
+    g.style.cursor = 'move';
+    g.setAttribute('filter', sel ? 'url(#pgShadowSel)' : 'url(#pgShadow)');
+
+    var shape, sh = type.shape;
+    if (sh === 'ellipse') {
+      shape = pgEl(NS,'ellipse',{cx:w/2,cy:h/2,rx:w/2,ry:h/2});
+    } else if (sh === 'cyl') {
+      shape = pgEl(NS,'rect',{width:w,height:h,rx:w/2,ry:12});
+    } else if (sh === 'tri') {
+      shape = pgEl(NS,'polygon',{points:(w/2)+',4 '+(w-3)+','+(h-3)+' 3,'+(h-3)});
+    } else if (sh === 'diamond') {
+      shape = pgEl(NS,'polygon',{points:(w/2)+',0 '+w+','+(h/2)+' '+(w/2)+','+h+' 0,'+(h/2)});
+    } else if (sh === 'penta') {
+      shape = pgEl(NS,'polygon',{points:(w/2)+',0 '+w+','+(h*0.38)+' '+(w*0.81)+','+h+' '+(w*0.19)+','+h+' 0,'+(h*0.38)});
+    } else if (sh === 'cross') {
+      var t3 = w*0.32;
+      shape = pgEl(NS,'polygon',{points:t3+',0 '+(w-t3)+',0 '+(w-t3)+','+t3+' '+w+','+t3+' '+w+','+(h-t3)+' '+(w-t3)+','+(h-t3)+' '+(w-t3)+','+h+' '+t3+','+h+' '+t3+','+(h-t3)+' 0,'+(h-t3)+' 0,'+t3+' '+t3+','+t3});
+    } else if (sh === 'tv') {
+      shape = pgEl(NS,'polygon',{points:'0,0 '+(w*0.80)+',0 '+w+','+(h/2)+' '+(w*0.80)+','+h+' 0,'+h});
+    } else if (sh === 'cloud') {
+      var d = 'M '+(w*0.22)+' '+(h*0.80)
+        +' a '+(h*0.24)+' '+(h*0.24)+' 0 0 1 '+(-h*0.03)+' '+(-h*0.44)
+        +' a '+(h*0.27)+' '+(h*0.27)+' 0 0 1 '+(w*0.21)+' '+(-h*0.26)
+        +' a '+(h*0.29)+' '+(h*0.29)+' 0 0 1 '+(w*0.35)+' '+(h*0.02)
+        +' a '+(h*0.25)+' '+(h*0.25)+' 0 0 1 '+(w*0.20)+' '+(h*0.28)
+        +' a '+(h*0.24)+' '+(h*0.24)+' 0 0 1 '+(-w*0.05)+' '+(h*0.42)+' Z';
+      shape = pgEl(NS,'path',{d:d});
+    } else {
+      shape = pgEl(NS,'rect',{width:w,height:h,rx:4});
+    }
+    shape.setAttribute('fill', type.fill);
+    shape.setAttribute('stroke', sel ? '#B85032' : type.stroke);
+    shape.setAttribute('stroke-width', sel ? 2.6 : 1.4);
+    g.appendChild(shape);
+
+    // detaily podle typu
+    if (el.t === 'fridge') {
+      var shelves = Math.max(1, Math.floor(h/44));
+      for (var si=1; si<shelves; si++) {
+        g.appendChild(pgEl(NS,'line',{x1:5,y1:h/shelves*si,x2:w-5,y2:h/shelves*si,
+          stroke:type.stroke,'stroke-width':0.7,opacity:0.4}));
+      }
+    }
+    if (el.t === 'tv') {
+      g.appendChild(pgEl(NS,'rect',{x:5,y:5,width:w*0.80-8,height:h-10,rx:2,
+        fill:'none',stroke:'#fff',opacity:0.35,'stroke-width':1}));
+    }
+    if (el.t === 'counter') {
+      g.appendChild(pgEl(NS,'line',{x1:0,y1:5,x2:w,y2:5,stroke:type.stroke,
+        'stroke-width':0.8,opacity:0.35}));
+    }
+
+    // ── popisek ──
+    if (el.label) {
+      var vertical = (h > w * 1.6);
+      var avail = vertical ? h - 10 : w - 8;
+      var words = el.label.split(' ');
+      var lines = [];
+      if (el.label.length * 5.6 <= avail) {
+        lines = [el.label];
+      } else {
+        var cur = '';
+        words.forEach(function(word){
+          var test = cur ? cur + ' ' + word : word;
+          if (test.length * 5.6 <= avail) cur = test;
+          else { if (cur) lines.push(cur); cur = word; }
+        });
+        if (cur) lines.push(cur);
+      }
+      var fs = lines.length > 2 ? 8 : (lines.length > 1 ? 9 : (avail < 50 ? 9 : 10.5));
+      var lh = fs + 1.6;
+      var startY = h/2 - ((lines.length-1) * lh)/2;
+
+      var tg = pgEl(NS,'g',{});
+      if (vertical) tg.setAttribute('transform','rotate(-90,'+(w/2)+','+(h/2)+')');
+      lines.forEach(function(ln, li) {
+        var txt = pgEl(NS,'text',{
+          x:w/2, y:startY + li*lh, 'text-anchor':'middle','dominant-baseline':'central',
+          'font-size':fs, 'font-family':'Inter,-apple-system,sans-serif',
+          'font-weight':600, fill:type.tw, 'letter-spacing':'0.01em'
+        });
+        txt.style.pointerEvents = 'none';
+        txt.textContent = ln;
+        tg.appendChild(txt);
+      });
+      tg.style.pointerEvents = 'none';
+      g.appendChild(tg);
+    }
+
+    g.addEventListener('mousedown', function(e){ pgStartDrag(e, parseInt(this.getAttribute('data-idx'))); });
+    g.addEventListener('dblclick', function(){
+      var i = parseInt(this.getAttribute('data-idx'));
+      var nv = prompt('Popisek prvku:', stores[currentStoreIdx].planogram[i].label||'');
+      if (nv !== null) { stores[currentStoreIdx].planogram[i].label = nv; markDirty(); renderPlanogram(); }
+    });
+    svg.appendChild(g);
+  });
+
+  // ── legenda ──
+  var used = {};
+  s.planogram.forEach(function(el){ used[el.t] = true; });
+  var names = {tv:'TV',counter:'Pult / vitrína',fridge:'Lednice',zmrz:'Zmrzlina',
+    pokladna:'Pokladna',entrance:'Vchod',kos:'Koš',table:'Stůl',kiosek:'Kiosek',
+    dirty:'Špinavé nádobí',kava:'Káva',wall:'Zeď'};
+  var lg = pgEl(NS,'g',{transform:'translate(16,16)'});
+  var lx = 0;
+  Object.keys(used).forEach(function(t){
+    var ty = PG_TYPES[t]; if (!ty) return;
+    lg.appendChild(pgEl(NS,'rect',{x:lx,y:0,width:11,height:11,rx:2.5,
+      fill:ty.fill,stroke:ty.stroke,'stroke-width':1}));
+    var lt = pgEl(NS,'text',{x:lx+16,y:6,'dominant-baseline':'central',
+      'font-size':10,'font-family':'Inter,sans-serif',fill:'#8A7A66','font-weight':500});
+    lt.textContent = names[t] || t;
+    lg.appendChild(lt);
+    lx += 26 + (names[t]||t).length * 5.6;
+  });
+  lg.style.pointerEvents = 'none';
+  svg.appendChild(lg);
+
+  var info = document.getElementById('pg-selected-info');
+  if (_pgSelected !== null && s.planogram[_pgSelected]) {
+    info.style.display = 'block';
+    document.getElementById('pg-sel-label').value = s.planogram[_pgSelected].label || '';
+  } else {
+    info.style.display = 'none';
+  }
+}
+
+function pgStartDrag(e, idx) {
+  e.preventDefault();
+  _pgSelected = idx;
+  var svg = document.getElementById('pg-canvas');
+  var pt = pgMousePt(e, svg);
+  var el = stores[currentStoreIdx].planogram[idx];
+  _pgDrag = { idx: idx, offX: pt.x - el.x, offY: pt.y - el.y };
+  renderPlanogram();
+}
+
+function pgMousePt(e, svg) {
+  var rect = svg.getBoundingClientRect();
+  var vb = svg.viewBox.baseVal;
+  return {
+    x: (e.clientX - rect.left) / rect.width * vb.width,
+    y: (e.clientY - rect.top) / rect.height * vb.height
+  };
+}
+
+function pgMouseMove(e) {
+  if (!_pgDrag) return;
+  var svg = document.getElementById('pg-canvas');
+  var pt = pgMousePt(e, svg);
+  var el = stores[currentStoreIdx].planogram[_pgDrag.idx];
+  el.x = Math.round((pt.x - _pgDrag.offX) / 10) * 10;
+  el.y = Math.round((pt.y - _pgDrag.offY) / 10) * 10;
+  renderPlanogram();
+}
+
+function pgMouseUp() {
+  if (_pgDrag) { markDirty(); _pgDrag = null; }
+}
+
+function pgAddElement(type) {
+  if (currentStoreIdx < 0) return;
+  var s = stores[currentStoreIdx];
+  if (!s.planogram) s.planogram = [];
+  var labels = {tv:'TV',counter:'Pult',fridge:'Lednice',zmrz:'Zmrzlina',entrance:'Vchod',kos:'Koš',table:'stůl'};
+  s.planogram.push({ t:type, x:450, y:320, label:labels[type]||'', rot:0 });
+  _pgSelected = s.planogram.length - 1;
+  markDirty();
+  renderPlanogram();
+}
+
+function pgDeleteSelected() {
+  if (_pgSelected === null || currentStoreIdx < 0) return;
+  stores[currentStoreIdx].planogram.splice(_pgSelected, 1);
+  _pgSelected = null;
+  markDirty();
+  renderPlanogram();
+}
+
+function pgRotate() {
+  if (_pgSelected === null) return;
+  var el = stores[currentStoreIdx].planogram[_pgSelected];
+  el.rot = ((el.rot||0) + 90) % 360;
+  markDirty();
+  renderPlanogram();
+}
+
+function pgUpdateLabel() {
+  if (_pgSelected === null) return;
+  stores[currentStoreIdx].planogram[_pgSelected].label = document.getElementById('pg-sel-label').value;
+  markDirty();
+  renderPlanogram();
+}
+
+function pgSave() {
+  saveCurrentStore();
+  if (typeof showToast === 'function') showToast('Půdorys uložen', 'ok');
+}
+
+// Globální listenery pro drag
+document.addEventListener('mousemove', pgMouseMove);
+document.addEventListener('mouseup', pgMouseUp);
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Delete' && _pgSelected !== null && currentView === 'store') {
+    var active = document.getElementById('tp-pudorys');
+    if (active && active.classList.contains('active')) pgDeleteSelected();
+  }
+});
+
 function calcTVRadio() {
   var s=stores[currentStoreIdx]; if(!s) return;
   var tvBefore=parseInt(document.getElementById('tv-before').value)||0;
@@ -5055,6 +5399,7 @@ function switchDTab(tab,el){
   if(tab==='tvradia') { calcTVRadio(); renderTVList(); }
   if(tab==='plakat') initPlakat();
   if(tab==='svatky' && currentStoreIdx >= 0) renderSvatkyTable(stores[currentStoreIdx]);
+  if(tab==='pudorys') { _pgSelected = null; renderPlanogram(); }
 }
 
 /* ── PLAKÁT OD ── */
