@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
    ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v49                      ║
-   ║  NEW: filtry v55 (seskupene, tri-stavove) + fix badge  ║
+   ║  NEW: v57 = filtry v55 + hi-fi pudorys + err banner ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -2249,6 +2249,22 @@ input.sb-search:focus {
 
 </head>
 <body>
+<div id="nojs-warn" style="padding:14px 16px;background:#FBE8E4;color:#B83A2E;font:600 14px/1.45 -apple-system,Segoe UI,sans-serif;text-align:center;">&#9888; JavaScript se nespustil, proto je aplikace pr&aacute;zdn&aacute;. Otev&#345;i soubor v Safari / Chrome nebo p&#345;es GitHub Pages &mdash; ne v n&aacute;hledu aplikace Soubory.</div>
+<script>
+(function(){ var n=document.getElementById('nojs-warn'); if(n&&n.parentNode) n.parentNode.removeChild(n); })();
+window.addEventListener('error', function(e){
+  try {
+    var b = document.getElementById('js-err-banner');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'js-err-banner';
+      b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#B83A2E;color:#fff;font:12px/1.5 -apple-system,Segoe UI,sans-serif;padding:10px 14px;white-space:pre-wrap;box-shadow:0 -2px 10px rgba(0,0,0,.25);';
+      if (document.body) document.body.appendChild(b);
+    }
+    b.textContent = '\u26A0 Chyba aplikace: ' + (e.message||'?') + '  (\u0159\u00E1dek ' + (e.lineno||'?') + ')';
+  } catch(x){}
+});
+</script>
 
 <div class="shell">
 
@@ -5124,6 +5140,211 @@ function pgEl(NS, tag, attrs) {
   return n;
 }
 
+// ═══ HI-FI PŮDORYS RENDERER (v57) ═══
+// ═══════════════════════════════════════════════════════════════════
+//  HI-FI PŮDORYS RENDERER — cista logika (bez DOM), sdilena app+preview
+// ═══════════════════════════════════════════════════════════════════
+
+var PG_DEFS =
+  // ── oceli / kov (kartacovany) ──
+  '<linearGradient id="pgSteel" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0" stop-color="#fdfefe"/><stop offset="0.45" stop-color="#eef1f4"/>'
+    +'<stop offset="0.55" stop-color="#e6eaee"/><stop offset="1" stop-color="#d2d8de"/></linearGradient>'
+  +'<linearGradient id="pgSteelDark" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0" stop-color="#8a929b"/><stop offset="1" stop-color="#6b747d"/></linearGradient>'
+  // ── chlazeny interier (studena modra) ──
+  +'<linearGradient id="pgCold" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0" stop-color="#eef7fc"/><stop offset="1" stop-color="#cfe6f4"/></linearGradient>'
+  // ── sklo (diagonalni odlesk) ──
+  +'<linearGradient id="pgGlass" x1="0" y1="0" x2="1" y2="1">'
+    +'<stop offset="0" stop-color="#ffffff" stop-opacity="0.60"/>'
+    +'<stop offset="0.26" stop-color="#ffffff" stop-opacity="0.06"/>'
+    +'<stop offset="0.50" stop-color="#ffffff" stop-opacity="0.28"/>'
+    +'<stop offset="0.68" stop-color="#ffffff" stop-opacity="0.02"/>'
+    +'<stop offset="1" stop-color="#ffffff" stop-opacity="0.14"/></linearGradient>'
+  // ── drevo (tepla) ──
+  +'<linearGradient id="pgWood" x1="0" y1="0" x2="0.92" y2="0.18">'
+    +'<stop offset="0" stop-color="#c79765"/><stop offset="0.5" stop-color="#b07f50"/>'
+    +'<stop offset="1" stop-color="#bd8a5c"/></linearGradient>'
+  // ── tmavy displej (lesk) ──
+  +'<linearGradient id="pgScreen" x1="0" y1="0" x2="0.5" y2="1">'
+    +'<stop offset="0" stop-color="#454c55"/><stop offset="0.5" stop-color="#20252c"/>'
+    +'<stop offset="1" stop-color="#0b0d11"/></linearGradient>'
+  // ── zmrzlina (ruzovy chlad) ──
+  +'<linearGradient id="pgIce" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0" stop-color="#fdeef4"/><stop offset="1" stop-color="#f6cfe0"/></linearGradient>'
+  // ── podlaha ──
+  +'<radialGradient id="pgFloorR" cx="0.5" cy="0.42" r="0.8">'
+    +'<stop offset="0" stop-color="#fdfbf7"/><stop offset="1" stop-color="#efe9dc"/></radialGradient>'
+  // ── stiny ──
+  +'<filter id="pgSh" x="-30%" y="-30%" width="160%" height="160%">'
+    +'<feDropShadow dx="0" dy="1.6" stdDeviation="2.2" flood-color="#2a1c10" flood-opacity="0.18"/></filter>'
+  +'<filter id="pgShSel" x="-45%" y="-45%" width="190%" height="190%">'
+    +'<feDropShadow dx="0" dy="2.4" stdDeviation="4.5" flood-color="#B85032" flood-opacity="0.45"/></filter>';
+
+function pgR(n){ return Math.round(n*10)/10; }
+
+// mrizka malych "podnosu s jidlem" do vitriny
+function pgFoodTiles(x, y, iw, ih) {
+  if (iw < 14 || ih < 10) return '';
+  var pal = ['#EAD29B','#E6A596','#F0DB94','#AEC888','#C99C6C','#D68B6E'];
+  var tw = 19, th = 12, gap = 4;
+  var cols = Math.max(1, Math.floor((iw + gap) / (tw + gap)));
+  var rows = Math.max(1, Math.floor((ih + gap) / (th + gap)));
+  if (cols*rows > 90) { // strop pro velke pulty
+    while (cols*rows > 90 && rows>1) rows--;
+  }
+  var gw = cols*tw + (cols-1)*gap, gh = rows*th + (rows-1)*gap;
+  var ox = x + (iw-gw)/2, oy = y + (ih-gh)/2;
+  var out = '';
+  for (var r=0;r<rows;r++) for (var c=0;c<cols;c++){
+    var col = pal[(r*2 + c*3) % pal.length];
+    var tx = ox + c*(tw+gap), ty = oy + r*(th+gap);
+    out += '<rect x="'+pgR(tx)+'" y="'+pgR(ty)+'" width="'+tw+'" height="'+th+'" rx="3" fill="'+col+'" stroke="#0000001f" stroke-width="0.5"/>'
+         + '<rect x="'+pgR(tx+1.5)+'" y="'+pgR(ty+1.5)+'" width="'+(tw-3)+'" height="2.6" rx="1.3" fill="#ffffff" opacity="0.4"/>';
+  }
+  return out;
+}
+
+// telo prvku (lokalni souradnice 0,0,w,h). Vraci SVG markup.
+function pgBody(t, w, h) {
+  var m = '';
+  var cx = w/2, cy = h/2;
+
+  if (t === 'counter') {                       // chlazena vitrina se sklem + jidlem
+    var i = 4;
+    m += '<rect width="'+w+'" height="'+h+'" rx="6" fill="url(#pgSteel)" stroke="#93a0aa" stroke-width="1.4"/>'
+       + '<rect x="'+i+'" y="'+i+'" width="'+(w-2*i)+'" height="'+(h-2*i)+'" rx="4" fill="url(#pgCold)" stroke="#aecbe0" stroke-width="0.8"/>'
+       + pgFoodTiles(i+3, i+3, w-2*i-6, h-2*i-6)
+       + '<rect x="'+i+'" y="'+i+'" width="'+(w-2*i)+'" height="'+(h-2*i)+'" rx="4" fill="url(#pgGlass)" pointer-events="none"/>'
+       + '<rect x="'+i+'" y="'+i+'" width="'+(w-2*i)+'" height="2.4" rx="1.2" fill="#ffffff" opacity="0.6"/>';
+  }
+  else if (t === 'fridge') {                   // lednice se sklenenymi dvermi + police
+    var fi = 4, vert = h >= w;
+    m += '<rect width="'+w+'" height="'+h+'" rx="5" fill="url(#pgSteel)" stroke="#8f9aa3" stroke-width="1.4"/>'
+       + '<rect x="'+fi+'" y="'+fi+'" width="'+(w-2*fi)+'" height="'+(h-2*fi)+'" rx="3" fill="url(#pgCold)" stroke="#a9c6db" stroke-width="0.8"/>';
+    var span = vert ? h-2*fi : w-2*fi, nsh = Math.max(2, Math.floor(span/40));
+    for (var k=1;k<nsh;k++){ var p = fi + span/nsh*k;
+      m += vert ? '<line x1="'+(fi+2)+'" y1="'+pgR(p)+'" x2="'+(w-fi-2)+'" y2="'+pgR(p)+'" stroke="#8fb4cf" stroke-width="0.9" opacity="0.7"/>'
+                : '<line x1="'+pgR(p)+'" y1="'+(fi+2)+'" x2="'+pgR(p)+'" y2="'+(h-fi-2)+'" stroke="#8fb4cf" stroke-width="0.9" opacity="0.7"/>'; }
+    var dh = Math.min(11, h*0.15);             // sklenene dvere na spodni hrane + klika
+    m += '<rect x="'+fi+'" y="'+(h-fi-dh)+'" width="'+(w-2*fi)+'" height="'+dh+'" rx="2" fill="url(#pgGlass)" stroke="#cfe0ec" stroke-width="0.6"/>'
+       + '<rect x="'+pgR(cx-9)+'" y="'+pgR(h-fi-dh/2-1.1)+'" width="18" height="2.2" rx="1.1" fill="#7d8790"/>';
+  }
+  else if (t === 'zmrz') {                      // zmrzlinovy pult / softserve
+    m += '<rect width="'+w+'" height="'+h+'" rx="8" fill="url(#pgSteel)" stroke="#c69bb0" stroke-width="1.4"/>'
+       + '<rect x="4" y="4" width="'+(w-8)+'" height="'+(h-8)+'" rx="6" fill="url(#pgIce)" stroke="#e6b6cf" stroke-width="0.8"/>';
+    // dve trysky / kopecky
+    var ny = h*0.62, r1 = Math.min(9, h*0.16);
+    m += '<circle cx="'+pgR(cx-w*0.16)+'" cy="'+pgR(ny)+'" r="'+pgR(r1)+'" fill="#fff" stroke="#e2a9c4" stroke-width="1"/>'
+       + '<circle cx="'+pgR(cx+w*0.16)+'" cy="'+pgR(ny)+'" r="'+pgR(r1)+'" fill="#fff" stroke="#e2a9c4" stroke-width="1"/>'
+       + '<circle cx="'+pgR(cx-w*0.16)+'" cy="'+pgR(ny)+'" r="'+pgR(r1*0.4)+'" fill="#f4c6db"/>'
+       + '<circle cx="'+pgR(cx+w*0.16)+'" cy="'+pgR(ny)+'" r="'+pgR(r1*0.4)+'" fill="#f4c6db"/>'
+       + '<rect x="4" y="4" width="'+(w-8)+'" height="'+(h-8)+'" rx="6" fill="url(#pgGlass)" opacity="0.7" pointer-events="none"/>';
+  }
+  else if (t === 'pokladna') {                 // POS terminal
+    m += '<rect x="'+pgR(w*0.12)+'" y="'+pgR(h*0.12)+'" width="'+pgR(w*0.76)+'" height="'+pgR(h*0.76)+'" rx="4" fill="url(#pgSteel)" stroke="#8f9aa3" stroke-width="1.2"/>'
+       + '<rect x="'+pgR(w*0.22)+'" y="'+pgR(h*0.18)+'" width="'+pgR(w*0.56)+'" height="'+pgR(h*0.42)+'" rx="2" fill="url(#pgScreen)" stroke="#0a0c0f" stroke-width="0.8"/>'
+       + '<rect x="'+pgR(w*0.26)+'" y="'+pgR(h*0.22)+'" width="'+pgR(w*0.30)+'" height="'+pgR(h*0.10)+'" rx="1" fill="#5b93c9" opacity="0.55"/>'
+       + '<rect x="'+pgR(w*0.30)+'" y="'+pgR(h*0.66)+'" width="'+pgR(w*0.40)+'" height="'+pgR(h*0.14)+'" rx="2" fill="#c7ccd2" stroke="#9aa2ab" stroke-width="0.6"/>';
+  }
+  else if (t === 'kava') {                      // kavovar (espresso), top-down
+    m += '<rect width="'+w+'" height="'+h+'" rx="4" fill="url(#pgSteelDark)" stroke="#5a636c" stroke-width="1.3"/>'
+       + '<rect x="3" y="3" width="'+(w-6)+'" height="'+pgR(h*0.42)+'" rx="2" fill="#3a4149" opacity="0.9"/>'                 // horni telo
+       + '<rect x="'+pgR(cx-w*0.16)+'" y="'+pgR(h*0.5)+'" width="'+pgR(w*0.32)+'" height="'+pgR(h*0.16)+'" rx="1.5" fill="#20252b"/>' // paka/hlava
+       + '<rect x="'+pgR(cx-w*0.22)+'" y="'+pgR(h*0.72)+'" width="'+pgR(w*0.44)+'" height="'+pgR(h*0.18)+'" rx="2" fill="#cfd4d9" stroke="#a7aeb5" stroke-width="0.6"/>' // odkapavac
+       + '<circle cx="'+pgR(w*0.2)+'" cy="'+pgR(h*0.24)+'" r="2.4" fill="#8b939b"/>'
+       + '<rect width="'+w+'" height="'+pgR(h*0.3)+'" rx="4" fill="#ffffff" opacity="0.06"/>';
+  }
+  else if (t === 'tv') {                        // LCD obrazovka + smer pohledu
+    m += '<rect x="1.5" y="1.5" width="'+(w-3)+'" height="'+(h-3)+'" rx="3" fill="url(#pgScreen)" stroke="#000" stroke-width="1"/>'
+       + '<rect x="'+pgR(w*0.14)+'" y="'+pgR(h*0.2)+'" width="'+pgR(w*0.5)+'" height="'+pgR(h*0.16)+'" rx="1.5" fill="#ffffff" opacity="0.14"/>'   // odlesk
+       + '<polygon points="'+pgR(w*0.5)+','+(h-2)+' '+pgR(w*0.5-6)+','+pgR(h+6)+' '+pgR(w*0.5+6)+','+pgR(h+6)+'" fill="#5f5f63" opacity="0.5"/>'; // smer
+  }
+  else if (t === 'kiosek') {                    // samoobsluzny kiosek
+    m += '<rect width="'+w+'" height="'+h+'" rx="7" fill="url(#pgSteel)" stroke="#8f9aa3" stroke-width="1.3"/>'
+       + '<rect x="'+pgR(w*0.16)+'" y="'+pgR(h*0.14)+'" width="'+pgR(w*0.68)+'" height="'+pgR(h*0.5)+'" rx="3" fill="url(#pgScreen)" stroke="#0a0c0f" stroke-width="0.8"/>'
+       + '<rect x="'+pgR(w*0.22)+'" y="'+pgR(h*0.2)+'" width="'+pgR(w*0.4)+'" height="'+pgR(h*0.12)+'" rx="1.5" fill="#5b93c9" opacity="0.5"/>'
+       + '<rect x="'+pgR(w*0.28)+'" y="'+pgR(h*0.72)+'" width="'+pgR(w*0.44)+'" height="'+pgR(h*0.12)+'" rx="2" fill="#c7ccd2" opacity="0.8"/>';
+  }
+  else if (t === 'entrance') {                  // vchod: prah + kridlo + oblouk otoceni
+    m += '<rect x="0" y="'+pgR(h*0.42)+'" width="'+w+'" height="'+pgR(h*0.16)+'" rx="2" fill="#e7dcc6" stroke="#c9b48f" stroke-width="1"/>'   // prah
+       + '<path d="M 2 '+pgR(h*0.5)+' A '+(w*0.7)+' '+(w*0.7)+' 0 0 1 '+pgR(w*0.72)+' '+pgR(h*0.5-w*0.7)+'" fill="none" stroke="#57b172" stroke-width="1.3" stroke-dasharray="4 4" opacity="0.8"/>' // oblouk
+       + '<rect x="1" y="'+pgR(h*0.46)+'" width="'+pgR(w*0.7)+'" height="4" rx="2" fill="#3f9d5c" transform="rotate(-32,2,'+pgR(h*0.5)+')"/>'  // kridlo
+       + '<rect x="0" y="'+pgR(h*0.42)+'" width="5" height="'+pgR(h*0.16)+'" fill="#8a7048"/>'
+       + '<rect x="'+(w-5)+'" y="'+pgR(h*0.42)+'" width="5" height="'+pgR(h*0.16)+'" fill="#8a7048"/>';
+  }
+  else if (t === 'wall') {                      // zed s jemnou srafou
+    m += '<rect width="'+w+'" height="'+h+'" rx="1.5" fill="#6f6051" stroke="#4c4033" stroke-width="1.2"/>';
+    var vert2 = h >= w, step = 9;
+    if (vert2) for (var yy=step; yy<h; yy+=step) m += '<line x1="1.5" y1="'+yy+'" x2="'+(w-1.5)+'" y2="'+yy+'" stroke="#ffffff" stroke-width="0.5" opacity="0.12"/>';
+    else       for (var xx=step; xx<w; xx+=step) m += '<line x1="'+xx+'" y1="1.5" x2="'+xx+'" y2="'+(h-1.5)+'" stroke="#ffffff" stroke-width="0.5" opacity="0.12"/>';
+  }
+  else if (t === 'table') {                     // stul (drevo) + zidle
+    var rr = Math.min(w,h)/2;
+    var round = (Math.abs(w-h) < Math.min(w,h)*0.4);
+    if (round) {
+      m += '<circle cx="'+cx+'" cy="'+cy+'" r="'+pgR(rr-1)+'" fill="url(#pgWood)" stroke="#8a5f38" stroke-width="1.3"/>'
+         + '<circle cx="'+cx+'" cy="'+cy+'" r="'+pgR(rr*0.62)+'" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.16"/>';
+    } else {
+      m += '<rect width="'+w+'" height="'+h+'" rx="6" fill="url(#pgWood)" stroke="#8a5f38" stroke-width="1.3"/>'
+         + '<rect x="'+pgR(w*0.14)+'" y="'+pgR(h*0.14)+'" width="'+pgR(w*0.72)+'" height="'+pgR(h*0.72)+'" rx="4" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.16"/>';
+    }
+    // zidle (4 obloucky) jen kdyz je dost mista
+    if (Math.min(w,h) >= 44) {
+      var cs = 9;
+      m += '<rect x="'+pgR(cx-cs)+'" y="-3" width="'+(cs*2)+'" height="6" rx="3" fill="#a9774a" opacity="0.85"/>'
+         + '<rect x="'+pgR(cx-cs)+'" y="'+(h-3)+'" width="'+(cs*2)+'" height="6" rx="3" fill="#a9774a" opacity="0.85"/>'
+         + '<rect x="-3" y="'+pgR(cy-cs)+'" width="6" height="'+(cs*2)+'" rx="3" fill="#a9774a" opacity="0.85"/>'
+         + '<rect x="'+(w-3)+'" y="'+pgR(cy-cs)+'" width="6" height="'+(cs*2)+'" rx="3" fill="#a9774a" opacity="0.85"/>';
+    }
+  }
+  else if (t === 'kos') {                        // kos na odpad
+    var kr = Math.min(w,h)/2 - 2;
+    m += '<circle cx="'+cx+'" cy="'+cy+'" r="'+pgR(kr)+'" fill="#e7e3da" stroke="#a69c8c" stroke-width="1.3"/>'
+       + '<circle cx="'+cx+'" cy="'+cy+'" r="'+pgR(kr*0.66)+'" fill="none" stroke="#a69c8c" stroke-width="1" opacity="0.7"/>'
+       + '<rect x="'+pgR(cx-kr*0.5)+'" y="'+pgR(cy-1.3)+'" width="'+pgR(kr)+'" height="2.6" rx="1.3" fill="#8f8676"/>';
+  }
+  else if (t === 'dirty') {                      // odkladac spinaveho nadobi
+    m += '<rect width="'+w+'" height="'+h+'" rx="5" fill="url(#pgSteel)" stroke="#9aa2ab" stroke-width="1.3"/>'
+       + '<rect x="4" y="4" width="'+(w-8)+'" height="'+(h-8)+'" rx="3" fill="#d8d2c6" stroke="#b3ab9b" stroke-width="0.8"/>'
+       + '<circle cx="'+pgR(cx)+'" cy="'+pgR(cy)+'" r="'+pgR(Math.min(w,h)*0.24)+'" fill="#c2b9a8" stroke="#a89e8c" stroke-width="0.8"/>'
+       + '<line x1="'+pgR(cx-Math.min(w,h)*0.24)+'" y1="'+pgR(cy)+'" x2="'+pgR(cx+Math.min(w,h)*0.24)+'" y2="'+pgR(cy)+'" stroke="#a89e8c" stroke-width="0.8"/>';
+  }
+  else {                                         // fallback = jednoduchy pult
+    m += '<rect width="'+w+'" height="'+h+'" rx="5" fill="#ffffff" stroke="#b8aa96" stroke-width="1.3"/>'
+       + '<rect x="0" y="0" width="'+w+'" height="3" rx="1.5" fill="#00000010"/>';
+  }
+  return m;
+}
+
+// ── label s bilym halo (citelny na skle i kovu) ──
+function pgLabelMarkup(label, w, h) {
+  if (!label) return '';
+  var vertical = (h > w * 1.6);
+  var avail = vertical ? h - 12 : w - 10;
+  var words = label.split(' ');
+  var lines = [];
+  if (label.length * 5.6 <= avail) lines = [label];
+  else { var cur='';
+    for (var i=0;i<words.length;i++){ var test = cur ? cur+' '+words[i] : words[i];
+      if (test.length*5.6 <= avail) cur = test; else { if(cur) lines.push(cur); cur = words[i]; } }
+    if (cur) lines.push(cur);
+  }
+  var fs = lines.length>2 ? 8 : (lines.length>1 ? 9 : (avail<50 ? 9 : 10.5));
+  var lh = fs + 1.8, startY = h/2 - ((lines.length-1)*lh)/2;
+  var open = '<g style="pointer-events:none"'+(vertical?' transform="rotate(-90,'+(w/2)+','+(h/2)+')"':'')+'>';
+  var body = '';
+  for (var j=0;j<lines.length;j++){
+    body += '<text x="'+(w/2)+'" y="'+pgR(startY + j*lh)+'" text-anchor="middle" dominant-baseline="central"'
+         +  ' font-size="'+fs+'" font-family="Inter,-apple-system,sans-serif" font-weight="700"'
+         +  ' fill="#2c2318" stroke="#ffffff" stroke-width="2.6" stroke-linejoin="round"'
+         +  ' style="paint-order:stroke">'+pgEsc(lines[j])+'</text>';
+  }
+  return open + body + '</g>';
+}
+function pgEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function renderPlanogram() {
   if (currentStoreIdx < 0) return;
   var s = stores[currentStoreIdx];
@@ -5131,199 +5352,83 @@ function renderPlanogram() {
   pgSeedFromDefaults(s);
   var svg = document.getElementById('pg-canvas');
   if (!svg) return;
-  var NS = 'http://www.w3.org/2000/svg';
-  svg.innerHTML = '';
 
-  // ── defs: stiny a gradienty ──
-  var defs = pgEl(NS,'defs',{});
-  defs.innerHTML =
-    '<filter id="pgShadow" x="-30%" y="-30%" width="160%" height="160%">' +
-      '<feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#2a1c10" flood-opacity="0.16"/>' +
-    '</filter>' +
-    '<filter id="pgShadowSel" x="-40%" y="-40%" width="180%" height="180%">' +
-      '<feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#B85032" flood-opacity="0.4"/>' +
-    '</filter>' +
-    '<linearGradient id="pgFloor" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" stop-color="#FDFCFA"/><stop offset="100%" stop-color="#F5F1EA"/>' +
-    '</linearGradient>';
-  svg.appendChild(defs);
+  var gridStr = '<g opacity="0.45">';
+  for (var gx=0; gx<=1000; gx+=25) gridStr += '<line x1="'+gx+'" y1="0" x2="'+gx+'" y2="700" stroke="#E6E0D6" stroke-width="'+(gx%100===0?1:0.5)+'"/>';
+  for (var gy=0; gy<=700; gy+=25) gridStr += '<line x1="0" y1="'+gy+'" x2="1000" y2="'+gy+'" stroke="#E6E0D6" stroke-width="'+(gy%100===0?1:0.5)+'"/>';
+  gridStr += '</g>';
 
-  // ── pozadi ──
-  svg.appendChild(pgEl(NS,'rect',{x:0,y:0,width:1000,height:700,fill:'#FAF8F4'}));
-
-  // ── jemna mrizka ──
-  var grid = pgEl(NS,'g',{opacity:'0.5'});
-  for (var gx=0; gx<=1000; gx+=25) {
-    grid.appendChild(pgEl(NS,'line',{x1:gx,y1:0,x2:gx,y2:700,
-      stroke:'#E6E0D6','stroke-width': (gx % 100 === 0 ? 1 : 0.5)}));
-  }
-  for (var gy=0; gy<=700; gy+=25) {
-    grid.appendChild(pgEl(NS,'line',{x1:0,y1:gy,x2:1000,y2:gy,
-      stroke:'#E6E0D6','stroke-width': (gy % 100 === 0 ? 1 : 0.5)}));
-  }
-  svg.appendChild(grid);
+  var head = '<defs>'+PG_DEFS+'</defs>'
+    + '<rect x="0" y="0" width="1000" height="700" fill="#FAF8F4"/>'
+    + gridStr;
 
   if (s.planogram.length === 0) {
-    var empty = pgEl(NS,'text',{x:500,y:350,'text-anchor':'middle','font-size':'16',
-      'font-family':'Inter,sans-serif',fill:'#B6A78E'});
-    empty.textContent = 'Zatím prázdné — přidej prvky tlačítky nahoře';
-    svg.appendChild(empty);
-    document.getElementById('pg-selected-info').style.display = 'none';
+    svg.innerHTML = head + '<text x="500" y="350" text-anchor="middle" font-size="16" font-family="Inter,sans-serif" fill="#B6A78E">Zatím prázdné — přidej prvky tlačítky nahoře</text>';
+    var ei = document.getElementById('pg-selected-info'); if (ei) ei.style.display = 'none';
     return;
   }
 
-  // ── podlaha + obrys prodejny ──
   var minX=9999,minY=9999,maxX=-9999,maxY=-9999;
   s.planogram.forEach(function(el){
     var t = PG_TYPES[el.t] || PG_TYPES.counter;
     var w = el.w || t.dw, hh = el.h || t.dh;
-    if (el.x < minX) minX = el.x;
-    if (el.y < minY) minY = el.y;
-    if (el.x + w > maxX) maxX = el.x + w;
-    if (el.y + hh > maxY) maxY = el.y + hh;
+    if (el.x<minX) minX=el.x;
+    if (el.y<minY) minY=el.y;
+    if (el.x+w>maxX) maxX=el.x+w;
+    if (el.y+hh>maxY) maxY=el.y+hh;
   });
   var pad = 34;
-  svg.appendChild(pgEl(NS,'rect',{
-    x:minX-pad, y:minY-pad, width:(maxX-minX)+pad*2, height:(maxY-minY)+pad*2,
-    rx:6, fill:'url(#pgFloor)', stroke:'#3A2E22','stroke-width':3,
-    filter:'url(#pgShadow)', 'pointer-events':'none'
-  }));
+  var outline = '<rect x="'+(minX-pad)+'" y="'+(minY-pad)+'" width="'+((maxX-minX)+pad*2)+'" height="'+((maxY-minY)+pad*2)+'" rx="8" fill="url(#pgFloorR)" stroke="#3A2E22" stroke-width="3" filter="url(#pgSh)" pointer-events="none"/>';
 
-  // ── prvky ──
-  s.planogram.forEach(function(el, idx) {
+  var elsStr = '';
+  s.planogram.forEach(function(el, idx){
     var type = PG_TYPES[el.t] || PG_TYPES.counter;
-    var w = el.w || type.dw, h = el.h || type.dh;
+    var w = el.w || type.dw, hh = el.h || type.dh;
     var sel = (_pgSelected === idx);
-
-    var g = pgEl(NS,'g',{
-      transform:'translate('+el.x+','+el.y+')'+(el.rot?' rotate('+el.rot+','+(w/2)+','+(h/2)+')':''),
-      'data-idx': idx
-    });
-    g.style.cursor = 'move';
-    g.setAttribute('filter', sel ? 'url(#pgShadowSel)' : 'url(#pgShadow)');
-
-    var shape, sh = type.shape;
-    if (sh === 'ellipse') {
-      shape = pgEl(NS,'ellipse',{cx:w/2,cy:h/2,rx:w/2,ry:h/2});
-    } else if (sh === 'cyl') {
-      shape = pgEl(NS,'rect',{width:w,height:h,rx:w/2,ry:12});
-    } else if (sh === 'tri') {
-      shape = pgEl(NS,'polygon',{points:(w/2)+',4 '+(w-3)+','+(h-3)+' 3,'+(h-3)});
-    } else if (sh === 'diamond') {
-      shape = pgEl(NS,'polygon',{points:(w/2)+',0 '+w+','+(h/2)+' '+(w/2)+','+h+' 0,'+(h/2)});
-    } else if (sh === 'penta') {
-      shape = pgEl(NS,'polygon',{points:(w/2)+',0 '+w+','+(h*0.38)+' '+(w*0.81)+','+h+' '+(w*0.19)+','+h+' 0,'+(h*0.38)});
-    } else if (sh === 'cross') {
-      var t3 = w*0.32;
-      shape = pgEl(NS,'polygon',{points:t3+',0 '+(w-t3)+',0 '+(w-t3)+','+t3+' '+w+','+t3+' '+w+','+(h-t3)+' '+(w-t3)+','+(h-t3)+' '+(w-t3)+','+h+' '+t3+','+h+' '+t3+','+(h-t3)+' 0,'+(h-t3)+' 0,'+t3+' '+t3+','+t3});
-    } else if (sh === 'tv') {
-      shape = pgEl(NS,'polygon',{points:'0,0 '+(w*0.80)+',0 '+w+','+(h/2)+' '+(w*0.80)+','+h+' 0,'+h});
-    } else if (sh === 'cloud') {
-      var d = 'M '+(w*0.22)+' '+(h*0.80)
-        +' a '+(h*0.24)+' '+(h*0.24)+' 0 0 1 '+(-h*0.03)+' '+(-h*0.44)
-        +' a '+(h*0.27)+' '+(h*0.27)+' 0 0 1 '+(w*0.21)+' '+(-h*0.26)
-        +' a '+(h*0.29)+' '+(h*0.29)+' 0 0 1 '+(w*0.35)+' '+(h*0.02)
-        +' a '+(h*0.25)+' '+(h*0.25)+' 0 0 1 '+(w*0.20)+' '+(h*0.28)
-        +' a '+(h*0.24)+' '+(h*0.24)+' 0 0 1 '+(-w*0.05)+' '+(h*0.42)+' Z';
-      shape = pgEl(NS,'path',{d:d});
-    } else {
-      shape = pgEl(NS,'rect',{width:w,height:h,rx:4});
-    }
-    shape.setAttribute('fill', type.fill);
-    shape.setAttribute('stroke', sel ? '#B85032' : type.stroke);
-    shape.setAttribute('stroke-width', sel ? 2.6 : 1.4);
-    g.appendChild(shape);
-
-    // detaily podle typu
-    if (el.t === 'fridge') {
-      var shelves = Math.max(1, Math.floor(h/44));
-      for (var si=1; si<shelves; si++) {
-        g.appendChild(pgEl(NS,'line',{x1:5,y1:h/shelves*si,x2:w-5,y2:h/shelves*si,
-          stroke:type.stroke,'stroke-width':0.7,opacity:0.4}));
-      }
-    }
-    if (el.t === 'tv') {
-      g.appendChild(pgEl(NS,'rect',{x:5,y:5,width:w*0.80-8,height:h-10,rx:2,
-        fill:'none',stroke:'#fff',opacity:0.35,'stroke-width':1}));
-    }
-    if (el.t === 'counter') {
-      g.appendChild(pgEl(NS,'line',{x1:0,y1:5,x2:w,y2:5,stroke:type.stroke,
-        'stroke-width':0.8,opacity:0.35}));
-    }
-
-    // ── popisek ──
-    if (el.label) {
-      var vertical = (h > w * 1.6);
-      var avail = vertical ? h - 10 : w - 8;
-      var words = el.label.split(' ');
-      var lines = [];
-      if (el.label.length * 5.6 <= avail) {
-        lines = [el.label];
-      } else {
-        var cur = '';
-        words.forEach(function(word){
-          var test = cur ? cur + ' ' + word : word;
-          if (test.length * 5.6 <= avail) cur = test;
-          else { if (cur) lines.push(cur); cur = word; }
-        });
-        if (cur) lines.push(cur);
-      }
-      var fs = lines.length > 2 ? 8 : (lines.length > 1 ? 9 : (avail < 50 ? 9 : 10.5));
-      var lh = fs + 1.6;
-      var startY = h/2 - ((lines.length-1) * lh)/2;
-
-      var tg = pgEl(NS,'g',{});
-      if (vertical) tg.setAttribute('transform','rotate(-90,'+(w/2)+','+(h/2)+')');
-      lines.forEach(function(ln, li) {
-        var txt = pgEl(NS,'text',{
-          x:w/2, y:startY + li*lh, 'text-anchor':'middle','dominant-baseline':'central',
-          'font-size':fs, 'font-family':'Inter,-apple-system,sans-serif',
-          'font-weight':600, fill:type.tw, 'letter-spacing':'0.01em'
-        });
-        txt.style.pointerEvents = 'none';
-        txt.textContent = ln;
-        tg.appendChild(txt);
-      });
-      tg.style.pointerEvents = 'none';
-      g.appendChild(tg);
-    }
-
-    g.addEventListener('mousedown', function(e){ pgStartDrag(e, parseInt(this.getAttribute('data-idx'))); });
-    g.addEventListener('dblclick', function(){
-      var i = parseInt(this.getAttribute('data-idx'));
-      var nv = prompt('Popisek prvku:', stores[currentStoreIdx].planogram[i].label||'');
-      if (nv !== null) { stores[currentStoreIdx].planogram[i].label = nv; markDirty(); renderPlanogram(); }
-    });
-    svg.appendChild(g);
+    var tr = 'translate('+el.x+','+el.y+')' + (el.rot ? ' rotate('+el.rot+','+(w/2)+','+(hh/2)+')' : '');
+    elsStr += '<g data-idx="'+idx+'" transform="'+tr+'" filter="url(#'+(sel?'pgShSel':'pgSh')+')" style="cursor:move">'
+      + pgBody(el.t, w, hh)
+      + pgLabelMarkup(el.label, w, hh)
+      + (sel ? '<rect x="-2.5" y="-2.5" width="'+(w+5)+'" height="'+(hh+5)+'" rx="7" fill="none" stroke="#B85032" stroke-width="2.4" stroke-dasharray="5 3" pointer-events="none"/>' : '')
+      + '</g>';
   });
 
-  // ── legenda ──
   var used = {};
   s.planogram.forEach(function(el){ used[el.t] = true; });
-  var names = {tv:'TV',counter:'Pult / vitrína',fridge:'Lednice',zmrz:'Zmrzlina',
-    pokladna:'Pokladna',entrance:'Vchod',kos:'Koš',table:'Stůl',kiosek:'Kiosek',
-    dirty:'Špinavé nádobí',kava:'Káva',wall:'Zeď'};
-  var lg = pgEl(NS,'g',{transform:'translate(16,16)'});
+  var lnames = {tv:'TV',counter:'Pult / vitrína',fridge:'Lednice',zmrz:'Zmrzlina',pokladna:'Pokladna',entrance:'Vchod',kos:'Koš',table:'Stůl',kiosek:'Kiosek',dirty:'Špinavé nádobí',kava:'Káva',wall:'Zeď'};
+  var lg = '<g transform="translate(16,16)" pointer-events="none">';
   var lx = 0;
   Object.keys(used).forEach(function(t){
     var ty = PG_TYPES[t]; if (!ty) return;
-    lg.appendChild(pgEl(NS,'rect',{x:lx,y:0,width:11,height:11,rx:2.5,
-      fill:ty.fill,stroke:ty.stroke,'stroke-width':1}));
-    var lt = pgEl(NS,'text',{x:lx+16,y:6,'dominant-baseline':'central',
-      'font-size':10,'font-family':'Inter,sans-serif',fill:'#8A7A66','font-weight':500});
-    lt.textContent = names[t] || t;
-    lg.appendChild(lt);
-    lx += 26 + (names[t]||t).length * 5.6;
+    lg += '<rect x="'+lx+'" y="0" width="11" height="11" rx="2.5" fill="'+ty.fill+'" stroke="'+ty.stroke+'" stroke-width="1"/>'
+        + '<text x="'+(lx+16)+'" y="6" dominant-baseline="central" font-size="10" font-family="Inter,sans-serif" fill="#8A7A66" font-weight="500">'+pgEsc(lnames[t]||t)+'</text>';
+    lx += 26 + (lnames[t]||t).length * 5.6;
   });
-  lg.style.pointerEvents = 'none';
-  svg.appendChild(lg);
+  lg += '</g>';
+
+  svg.innerHTML = head + outline + elsStr + lg;
+
+  var groups = svg.querySelectorAll('g[data-idx]');
+  for (var gi=0; gi<groups.length; gi++){
+    (function(node){
+      var i = parseInt(node.getAttribute('data-idx'),10);
+      node.addEventListener('mousedown', function(e){ pgStartDrag(e, i); });
+      node.addEventListener('dblclick', function(){
+        var nv = prompt('Popisek prvku:', stores[currentStoreIdx].planogram[i].label||'');
+        if (nv !== null){ stores[currentStoreIdx].planogram[i].label = nv; markDirty(); renderPlanogram(); }
+      });
+    })(groups[gi]);
+  }
 
   var info = document.getElementById('pg-selected-info');
-  if (_pgSelected !== null && s.planogram[_pgSelected]) {
-    info.style.display = 'block';
-    document.getElementById('pg-sel-label').value = s.planogram[_pgSelected].label || '';
-  } else {
-    info.style.display = 'none';
+  if (info) {
+    if (_pgSelected !== null && s.planogram[_pgSelected]) {
+      info.style.display = 'block';
+      var lab = document.getElementById('pg-sel-label');
+      if (lab) lab.value = s.planogram[_pgSelected].label || '';
+    } else {
+      info.style.display = 'none';
+    }
   }
 }
 
