@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
    ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v49                      ║
-   ║  NEW: v62 mapa - zalozni CDN + probuzeni + hlaska     ║
+   ║  NEW: v63 FIX prazdne zalozky (vnoreni view-store)    ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -2992,6 +2992,7 @@ window.addEventListener('error', function(e){
       </div>
     </div><!-- /store-detail -->
   </div><!-- /view-store -->
+  </div><!-- v63 FIX: skutečné uzavření #view-store; bez tohoto byly plakat/zmrzlina/svátky/mapa vnořené uvnitř a při skrytém Detailu prodejny se nezobrazovaly -->
 
 
   <!-- PLAKÁT OD VIEW -->
@@ -7645,6 +7646,20 @@ window.addEventListener('error', function(e) {
       }
     });
   }
+})();
+
+// ─── v63: normalizace struktury view panelů (pojistka proti špatnému vnoření) ───
+(function normalizeViews(){
+  try {
+    var main = document.getElementById('main-area');
+    if (!main) return;
+    var ids = ['view-live','view-wolt','view-tvradia','view-store','view-plakat',
+               'view-zmrzlina','view-svatky','view-mapa','sv-checklist-panel'];
+    ids.forEach(function(id){
+      var el = document.getElementById(id);
+      if (el && el.parentNode !== main) main.appendChild(el);
+    });
+  } catch(e){ if (window.console) console.warn('[normalizeViews]', e); }
 })();
 
 renderSidebar();
