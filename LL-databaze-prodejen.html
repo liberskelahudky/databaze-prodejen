@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#FBF7F0">
 <title>Databáze prodejen — Libeřské lahůdky v49</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(l);">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
    ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v49                      ║
-   ║  NEW: v60 undo/dup/rozmery, karta PDF, historie, sync  ║
+   ║  NEW: v62 mapa - zalozni CDN + probuzeni + hlaska     ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -5529,10 +5529,11 @@ function pgBuildSVG(s, selIdx) {
     if (el.y+hh>maxY) maxY=el.y+hh;
   });
   var pad = 34;
+  var LEGEND_H = 25; // vlastni pruh pro legendu NAD obrysem — nic nekoliduje
   var vbX = Math.floor((minX-pad-14)/25)*25;
-  var vbY = Math.floor((minY-pad-14)/25)*25;
+  var vbY = Math.floor((minY-pad-14)/25)*25 - LEGEND_H;
   var vbW = Math.max(400, Math.ceil((maxX+pad+14)/25)*25 - vbX);
-  var vbH = Math.max(300, Math.ceil((maxY+pad+14)/25)*25 - vbY);
+  var vbH = Math.max(300, Math.ceil((maxY+pad+14)/25)*25 - (vbY + LEGEND_H)) + LEGEND_H;
 
   var gridStr = '<g opacity="0.45">';
   for (var gx=vbX; gx<=vbX+vbW; gx+=25) gridStr += '<line x1="'+gx+'" y1="'+vbY+'" x2="'+gx+'" y2="'+(vbY+vbH)+'" stroke="#E6E0D6" stroke-width="'+(gx%100===0?1:0.5)+'"/>';
@@ -5544,7 +5545,17 @@ function pgBuildSVG(s, selIdx) {
     + gridStr
     + '<rect x="'+(minX-pad)+'" y="'+(minY-pad)+'" width="'+((maxX-minX)+pad*2)+'" height="'+((maxY-minY)+pad*2)+'" rx="8" fill="url(#pgFloorR)" stroke="#3A2E22" stroke-width="3" filter="url(#pgSh)" pointer-events="none"/>';
 
-  s.planogram.forEach(function(el, idx){
+  // ── z-vrstveni podle typu: zdi dospod, TV a pokladny navrch ──
+  var Z_ORDER = { wall:0, entrance:1, table:2, counter:3, fridge:3, zmrz:3, kiosek:3, dirty:3, kava:4, kos:4, pokladna:5, tv:6 };
+  var order = s.planogram.map(function(el, idx){ return { el: el, idx: idx }; });
+  order.sort(function(a, b){
+    var za = (Z_ORDER[a.el.t] != null) ? Z_ORDER[a.el.t] : 3;
+    var zb = (Z_ORDER[b.el.t] != null) ? Z_ORDER[b.el.t] : 3;
+    return (za - zb) || (a.idx - b.idx);
+  });
+
+  order.forEach(function(o){
+    var el = o.el, idx = o.idx;
     var type = PG_TYPES[el.t] || PG_TYPES.counter;
     var w = el.w || type.dw, hh = el.h || type.dh;
     var sel = (selIdx === idx);
@@ -5559,7 +5570,7 @@ function pgBuildSVG(s, selIdx) {
   var used = {};
   s.planogram.forEach(function(el){ used[el.t] = true; });
   var lnames = {tv:'TV',counter:'Pult / vitrína',fridge:'Lednice',zmrz:'Zmrzlina',pokladna:'Pokladna',entrance:'Vchod',kos:'Koš',table:'Stůl',kiosek:'Kiosek',dirty:'Špinavé nádobí',kava:'Káva',wall:'Zeď'};
-  var lg = '<g transform="translate('+(vbX+16)+','+(vbY+16)+')" pointer-events="none">';
+  var lg = '<g transform="translate('+(vbX+16)+','+(vbY+8)+')" pointer-events="none">';
   var lx = 0;
   Object.keys(used).forEach(function(t){
     var ty = PG_TYPES[t]; if (!ty) return;
@@ -7027,10 +7038,24 @@ function copySvatkyAll() {
 
 // ─── MAPA ────────────────────────────────────────────────────────
 var mapInstance = null;
+var _mapTries = 0;
 var mapMarkers = [];
 
 function initMap() {
-  if (!window.L) { setTimeout(initMap, 300); return; }
+  var mc = document.getElementById('map-leaflet');
+  if (!window.L) {
+    _mapTries++;
+    if (_mapTries > 30) {
+      if (mc) mc.innerHTML = '<div style="padding:30px;font:14px/1.6 -apple-system,Segoe UI,sans-serif;color:#B83A2E;max-width:520px;">'
+        + '<b>Mapa se nenačetla.</b><br>Knihovnu map (Leaflet) blokuje síť nebo je počítač offline. '
+        + 'Zkus obnovit stránku (Cmd/Ctrl+R) nebo jinou síť. Zbytek aplikace funguje normálně.'
+        + '<br><br><button onclick="_mapTries=0;initMap()" style="font:600 13px sans-serif;padding:7px 14px;border-radius:99px;border:1px solid #B83A2E;background:#FBE8E4;color:#B83A2E;cursor:pointer;">↻ Zkusit znovu</button></div>';
+      return;
+    }
+    setTimeout(initMap, 300);
+    return;
+  }
+  if (mc && mc.getAttribute('data-err')) { mc.innerHTML = ''; mc.removeAttribute('data-err'); }
   if (!mapInstance) {
     mapInstance = L.map('map-leaflet', {zoomControl: true}).setView([50.073, 14.437], 11);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -7040,6 +7065,9 @@ function initMap() {
     }).addTo(mapInstance);
   }
   renderMapMarkers();
+  // Probuzení mapy — bez invalidateSize zůstane po zobrazení skrytého panelu bílá
+  setTimeout(function(){ if (mapInstance) mapInstance.invalidateSize(); }, 60);
+  setTimeout(function(){ if (mapInstance) mapInstance.invalidateSize(); }, 300);
 }
 
 function renderMapMarkers() {
@@ -7820,7 +7848,7 @@ function printPlakatSvatekKombi(storeIdx, dateKeys) {
 }
 
 </script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onerror=function(){var s2=document.createElement('script');s2.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';document.head.appendChild(s2);};document.head.appendChild(s);"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <div id="toast-stack" aria-live="polite"></div>
 
