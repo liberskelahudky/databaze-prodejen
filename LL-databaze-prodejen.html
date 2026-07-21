@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
    ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v49                      ║
-   ║  NEW: v63 FIX prazdne zalozky (vnoreni view-store)    ║
+   ║  NEW: v68 dlazdice odkazu + opravy z revize kodu      ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -2251,6 +2251,31 @@ input.sb-search:focus {
 .tabnav-actions .dt-save-btn { border:1px solid var(--accent-d); box-shadow:0 1px 6px rgba(0,0,0,.14); }
 .tabnav-actions .dt-del-btn { background:var(--paper-2); color:var(--closed); border:1px solid var(--line-strong); box-shadow:none; padding:7px 10px; border-radius:99px; font-size:12px; cursor:pointer; }
 .tabnav-actions .dt-del-btn:hover { background:var(--closed-bg); }
+
+/* ═══ v67: dlouhe URL zkracene — plny text az po kliknuti ═══ */
+#f-gmaps:not(:focus), #f-web:not(:focus), #f-drive:not(:focus), #f-firmy:not(:focus), #f-wolt-url:not(:focus) {
+  font-size: 11px;
+  color: var(--ink-3);
+  opacity: .65;
+  text-overflow: ellipsis;
+}
+
+/* ═══ v68: dlazdice online odkazu ═══ */
+.url-tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.url-tile { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:10px 4px 8px; background:var(--paper-2); border:1px solid var(--line);
+  border-radius:var(--r2); cursor:pointer; transition:border-color .15s, transform .15s; }
+.url-tile:hover { border-color:var(--line-strong); transform:translateY(-1px); }
+.url-tile.filled { background:var(--paper); }
+.ut-ico { font-size:17px; line-height:1; }
+.ut-name { font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--ink-2); }
+.ut-state { font-size:10px; color:var(--ink-3); }
+.url-tile.filled .ut-state { color:#2E7D46; font-weight:700; }
+.ut-open { position:absolute; top:3px; right:6px; font-size:12px; text-decoration:none;
+  color:var(--accent-d); display:none; padding:2px; }
+.url-tile.filled .ut-open { display:block; }
+.url-edit-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
+.url-edit-row input { flex:1; }
 </style>
 
 </head>
@@ -2258,18 +2283,6 @@ input.sb-search:focus {
 <div id="nojs-warn" style="padding:14px 16px;background:#FBE8E4;color:#B83A2E;font:600 14px/1.45 -apple-system,Segoe UI,sans-serif;text-align:center;">&#9888; JavaScript se nespustil, proto je aplikace pr&aacute;zdn&aacute;. Otev&#345;i soubor v Safari / Chrome nebo p&#345;es GitHub Pages &mdash; ne v n&aacute;hledu aplikace Soubory.</div>
 <script>
 (function(){ var n=document.getElementById('nojs-warn'); if(n&&n.parentNode) n.parentNode.removeChild(n); })();
-window.addEventListener('error', function(e){
-  try {
-    var b = document.getElementById('js-err-banner');
-    if (!b) {
-      b = document.createElement('div');
-      b.id = 'js-err-banner';
-      b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#B83A2E;color:#fff;font:12px/1.5 -apple-system,Segoe UI,sans-serif;padding:10px 14px;white-space:pre-wrap;box-shadow:0 -2px 10px rgba(0,0,0,.25);';
-      if (document.body) document.body.appendChild(b);
-    }
-    b.textContent = '\u26A0 Chyba aplikace: ' + (e.message||'?') + '  (\u0159\u00E1dek ' + (e.lineno||'?') + ')';
-  } catch(x){}
-});
 </script>
 
 <div class="shell">
@@ -2628,29 +2641,46 @@ window.addEventListener('error', function(e){
                 <span>Online přítomnost</span>
                 <button class="wolt-chip" id="wolt-chip-btn" onclick="toggleWolt()">Wolt</button>
               </div>
-              <div class="info-row">
-                <span class="info-row-icon">🗺</span>
-                <span class="info-row-label">Maps</span>
-                <input type="text" id="f-gmaps" placeholder="URL Google Maps" oninput="onFieldChange();updateGmapsLink()" />
-                <a id="f-gmaps-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
+              <div class="url-tiles">
+                <div class="url-tile" id="ut-gmaps" onclick="urlTileEdit('gmaps')" title="Klik = upravit odkaz">
+                  <a class="ut-open" id="ut-gmaps-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                  <span class="ut-ico">🗺</span><span class="ut-name">Maps</span><span class="ut-state" id="ut-gmaps-state">—</span>
+                </div>
+                <div class="url-tile" id="ut-web" onclick="urlTileEdit('web')" title="Klik = upravit odkaz">
+                  <a class="ut-open" id="ut-web-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                  <span class="ut-ico">🌐</span><span class="ut-name">Web</span><span class="ut-state" id="ut-web-state">—</span>
+                </div>
+                <div class="url-tile" id="ut-drive" onclick="urlTileEdit('drive')" title="Klik = upravit odkaz">
+                  <a class="ut-open" id="ut-drive-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                  <span class="ut-ico">💾</span><span class="ut-name">Drive</span><span class="ut-state" id="ut-drive-state">—</span>
+                </div>
+                <div class="url-tile" id="ut-firmy" onclick="urlTileEdit('firmy')" title="Klik = upravit odkaz">
+                  <a class="ut-open" id="ut-firmy-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                  <span class="ut-ico">🏢</span><span class="ut-name">Firmy</span><span class="ut-state" id="ut-firmy-state">—</span>
+                </div>
               </div>
-              <div class="info-row">
-                <span class="info-row-icon">🌐</span>
-                <span class="info-row-label">Web</span>
-                <input type="url" id="f-web" placeholder="https://liberskelahudky.cz/…" oninput="onFieldChange();updateWebLink()" />
-                <a id="f-web-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
-              </div>
-              <div class="info-row">
-                <span class="info-row-icon">💾</span>
-                <span class="info-row-label">Drive</span>
-                <input type="url" id="f-drive" placeholder="https://drive.google.com/…" oninput="onFieldChange();updateDriveLink()" />
-                <a id="f-drive-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
-              </div>
-              <div class="info-row">
-                <span class="info-row-icon">🏢</span>
-                <span class="info-row-label">Firmy</span>
-                <input type="url" id="f-firmy" placeholder="https://www.firmy.cz/…" oninput="onFieldChange();updateFirmyLink()" />
-                <a id="f-firmy-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
+              <div id="url-edit-wrap" style="display:none;margin-top:8px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--r2);padding:8px 10px;">
+                <div class="url-edit-row" id="ue-gmaps" style="display:none;">
+                  <span class="info-row-label" style="min-width:44px;">Maps</span>
+                  <input type="text" id="f-gmaps" placeholder="URL Google Maps" oninput="onFieldChange();updateGmapsLink();updateUrlTiles()" />
+                  <a id="f-gmaps-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
+                </div>
+                <div class="url-edit-row" id="ue-web" style="display:none;">
+                  <span class="info-row-label" style="min-width:44px;">Web</span>
+                  <input type="url" id="f-web" placeholder="https://liberskelahudky.cz/…" oninput="onFieldChange();updateWebLink();updateUrlTiles()" />
+                  <a id="f-web-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
+                </div>
+                <div class="url-edit-row" id="ue-drive" style="display:none;">
+                  <span class="info-row-label" style="min-width:44px;">Drive</span>
+                  <input type="url" id="f-drive" placeholder="https://drive.google.com/…" oninput="onFieldChange();updateDriveLink();updateUrlTiles()" />
+                  <a id="f-drive-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
+                </div>
+                <div class="url-edit-row" id="ue-firmy" style="display:none;">
+                  <span class="info-row-label" style="min-width:44px;">Firmy</span>
+                  <input type="url" id="f-firmy" placeholder="https://www.firmy.cz/…" oninput="onFieldChange();updateFirmyLink();updateUrlTiles()" />
+                  <a id="f-firmy-link" href="#" target="_blank" rel="noopener" class="info-row-link hidden">↗</a>
+                </div>
+                <div style="text-align:right;margin-top:6px;"><button class="btn btn-ghost" style="font-size:11px;" onclick="urlTileCloseEdit()">✓ Hotovo</button></div>
               </div>
             </div>
 
@@ -3415,7 +3445,7 @@ var DEFAULT_STORES = [
   {'id':'15','planogram':[{'t': 'counter', 'x': 330, 'y': 280, 'w': 50, 'h': 80, 'label': 'Dorty / Sladké', 'rot': 0}, {'t': 'zmrz', 'x': 430, 'y': 270, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'pokladna', 'x': 370, 'y': 350, 'label': '', 'rot': 0}, {'t': 'pokladna', 'x': 410, 'y': 370, 'label': '', 'rot': 0}, {'t': 'tv', 'x': 540, 'y': 300, 'label': 'TV', 'rot': 0}, {'t': 'counter', 'x': 450, 'y': 390, 'w': 90, 'h': 40, 'label': 'chlebíčky', 'rot': 330}, {'t': 'counter', 'x': 540, 'y': 390, 'w': 100, 'h': 40, 'label': 'Bagety, teplý bufet', 'rot': 0}, {'t': 'counter', 'x': 640, 'y': 390, 'w': 90, 'h': 40, 'label': 'Otevřená vitrína', 'rot': 0}, {'t': 'dirty', 'x': 200, 'y': 330, 'label': 'Špinavé nádobí', 'rot': 0}, {'t': 'entrance', 'x': 340, 'y': 520, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 480, 'y': 500, 'label': 'Koš', 'rot': 0}, {'t': 'table', 'x': 200, 'y': 420, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 270, 'y': 420, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 340, 'y': 420, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 200, 'y': 470, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 270, 'y': 470, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 340, 'y': 470, 'label': 'stůl', 'rot': 0}],'code':'67','lat':50.1038,'lng':14.3303,'name':'Ruzyňě','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-829.png','type':'Ulice','addr':'Žukovského 887/4, 161 00 Praha 6','tel':'+420 703 635 650','email':'ruzyne@liberskelahudky.cz','vedouci':'Jakub Hermánek','vedouciTel':'+420 736 681 747','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13472487-liberske-lahudky-praha-ruzyne.html','web':'https://www.liberskelahudky.cz/prodejna/ruzyne/','drive':'https://drive.google.com/drive/folders/1XQzfL9Af5U5WRPYi4Lfrh1Idr1BkeGTf','barrier':true,'seating':true,'eshop':true,'kiosek':false,'vyroba':true,'hours':['06:30-17:00','06:30-17:00','06:30-17:00','06:30-17:00','06:30-16:00','08:00-12:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':1,'dvere':0,'okenko':true,'zmrzHours':'Po-Čt 10:00-16:00, Pá 10:00-15:00, So 10:00-11:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
   {'id':'16','planogram':[{'t': 'counter', 'x': 350, 'y': 300, 'w': 200, 'h': 45, 'label': 'Pult', 'rot': 0}, {'t': 'pokladna', 'x': 560, 'y': 305, 'label': '', 'rot': 0}, {'t': 'entrance', 'x': 440, 'y': 450, 'label': 'Vchod', 'rot': 0}],'code':'72','lat':50.1109,'lng':14.4899,'name':'Poliklinika Vysočany','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-834.png','type':'Poliklinika','addr':'Sokolovská 810/304, 190 00 Praha 9','tel':'+420 604 271 071','email':'vysocany@liberskelahudky.cz','vedouci':'Jaroslava Krejčí','vedouciTel':'+420 604 271 071','obchZast':'Richard Sviták','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13472486-liberske-lahudky-praha-vysocany.html','web':'https://www.liberskelahudky.cz/prodejna/vysocany/','drive':'https://drive.google.com/drive/folders/1mfvIjvhf9O3a4hYTyHKdrDqlSaNGY0gl','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['7:00-17:00','7:00-17:00','7:00-17:00','7:00-17:00','7:00-16:00','ZAVŘENO','ZAVŘENO'],'zmrzlina':0,'nfc':1,'lcd':2,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
   {'id':'17','planogram':[{'t': 'kava', 'x': 290, 'y': 280, 'w': 60, 'h': 40, 'label': 'Káva', 'rot': 0}, {'t': 'pokladna', 'x': 370, 'y': 330, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 420, 'y': 300, 'w': 140, 'h': 40, 'label': 'Chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 565, 'y': 300, 'w': 160, 'h': 40, 'label': 'Pomazánky a saláty', 'rot': 0}, {'t': 'counter', 'x': 340, 'y': 370, 'w': 50, 'h': 120, 'label': 'Sladké', 'rot': 0}, {'t': 'zmrz', 'x': 700, 'y': 400, 'label': 'Zmrzlinový box', 'rot': 0}, {'t': 'entrance', 'x': 580, 'y': 490, 'label': 'Vchod', 'rot': 0}],'code':'58','lat':49.9519,'lng':14.5122,'name':'Jesenice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-836.png','type':'Mimopražská','addr':'Na Ochoze 474, 252 42 Jesenice','tel':'+420 731 151 311','email':'jesenice@liberskelahudky.cz','vedouci':'','vedouciTel':'','obchZast':'David Fendrych','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13362507-liberske-lahudky-jesenice.html','web':'https://www.liberskelahudky.cz/prodejna/jesenice/','drive':'https://drive.google.com/drive/folders/1CXfIgZdIqGeF0SedzyeChT6jwIpm2JV5','barrier':true,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['06:00-17:30','06:00-17:30','06:00-17:30','06:00-17:30','06:00-17:30','07:00-11:00','ZAVŘENO'],'zmrzlina':0,'nfc':0,'lcd':1,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'mrazak','saints':{},'exceptions':{}},
-  {'id':'18','planogram':[{'t': 'kava', 'x': 280, 'y': 290, 'w': 60, 'h': 60, 'label': 'Káva', 'rot': 0}, {'t': 'counter', 'x': 340, 'y': 340, 'w': 50, 'h': 130, 'label': 'Dezerty a saláty', 'rot': 0}, {'t': 'counter', 'x': 360, 'y': 320, 'w': 100, 'h': 40, 'label': 'Kasa', 'rot': 330}, {'t': 'counter', 'x': 470, 'y': 300, 'w': 180, 'h': 40, 'label': 'Pomazánky a smažené', 'rot': 0}, {'t': 'zmrz', 'x': 500, 'y': 450, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 600, 'y': 480, 'label': 'Vchod', 'rot': 0}],'code':'57','lat':49.9559,'lng':14.4568,'name':'Libeř','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-825.png','type':'Mimopražská','addr':'Libeř 127, 252 41 Dolní Břežany','tel':'+420 739 642 680','email':'prodejnaliber@liberskelahudky.cz','vedouci':'','vedouciTel':'','obchZast':'David Fendrych','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13362506-liberske-lahudky-liber.html','web':'https://www.liberskelahudky.cz/prodejna/liber/','drive':'https://drive.google.com/drive/folders/1hZlSAbV14rLHfYW48Z6UztMkw-h0zIRO','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-12:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':1,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-17:00, So 10:00-11:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
+  {'id':'18','planogram':[{'t': 'kava', 'x': 280, 'y': 290, 'w': 60, 'h': 60, 'label': 'Káva', 'rot': 0}, {'t': 'counter', 'x': 340, 'y': 340, 'w': 50, 'h': 130, 'label': 'Dezerty a saláty', 'rot': 0}, {'t': 'counter', 'x': 360, 'y': 320, 'w': 100, 'h': 40, 'label': 'Kasa', 'rot': 330}, {'t': 'counter', 'x': 470, 'y': 300, 'w': 180, 'h': 40, 'label': 'Pomazánky a smažené', 'rot': 0}, {'t': 'zmrz', 'x': 500, 'y': 450, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 600, 'y': 480, 'label': 'Vchod', 'rot': 0}],'code':'57','lat':49.9240105,'lng':14.4809033,'name':'Libeř','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-825.png','type':'Mimopražská','addr':'Libeř 127, 252 41 Dolní Břežany','tel':'+420 739 642 680','email':'prodejnaliber@liberskelahudky.cz','vedouci':'','vedouciTel':'','obchZast':'David Fendrych','wolt':'','gmaps':'','firmy':'https://www.firmy.cz/company/13362506-liberske-lahudky-liber.html','web':'https://www.liberskelahudky.cz/prodejna/liber/','drive':'https://drive.google.com/drive/folders/1hZlSAbV14rLHfYW48Z6UztMkw-h0zIRO','barrier':false,'seating':false,'eshop':false,'kiosek':false,'vyroba':false,'hours':['07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-18:30','07:00-12:00','ZAVŘENO'],'zmrzlina':3,'nfc':0,'lcd':1,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-17:00, So 10:00-11:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
   {'id':'19','planogram':[],'code':'74','lat':48.9745,'lng':14.4744,'name':'České Budějovice','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-821.png','type':'Mimopražská','addr':'Hrozná 46/17, 370 01 České Budějovice','tel':'+420 603 755 230','email':'cb.krajinska@liberskelahudky.cz','vedouci':'Zdeněka Pavlíková','vedouciTel':'+420 603 755 230','obchZast':'David Fendrych','wolt':'Ano','gmaps':'','firmy':'https://www.firmy.cz/company/13748209-liberske-lahudky-ceske-budejovice-1.html','web':'https://www.liberskelahudky.cz/prodejna/ceske-budejovice/','drive':'https://drive.google.com/drive/folders/1Kk-XJ91ym_GP3rwOtSVBMMmrbtiwjRX4','barrier':false,'seating':false,'eshop':true,'kiosek':false,'vyroba':true,'hours':['7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','7:00-18:30','8:00-17:00','8:00-17:00'],'zmrzlina':3,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'Po-Pá 10:00-17:00, So-Ne 10:00-14:00','zmrzVydej':true,'zmrzType':'prodejna','saints':{},'exceptions':{}},
   {'id':'20','planogram':[{'t': 'tv', 'x': 820, 'y': 330, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 340, 'y': 350, 'label': 'TV', 'rot': 330}, {'t': 'tv', 'x': 300, 'y': 400, 'label': 'TV', 'rot': 330}, {'t': 'tv', 'x': 290, 'y': 500, 'label': 'TV', 'rot': 90}, {'t': 'counter', 'x': 400, 'y': 420, 'w': 50, 'h': 130, 'label': 'Pečivo', 'rot': 0}, {'t': 'pokladna', 'x': 420, 'y': 400, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 480, 'y': 390, 'w': 180, 'h': 40, 'label': 'Vážené a chlebíčky', 'rot': 0}, {'t': 'counter', 'x': 670, 'y': 390, 'w': 110, 'h': 40, 'label': 'Teplý pult', 'rot': 0}, {'t': 'counter', 'x': 690, 'y': 450, 'w': 50, 'h': 100, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 700, 'y': 470, 'label': 'TV', 'rot': 90}, {'t': 'zmrz', 'x': 280, 'y': 560, 'label': 'Zmrzlina', 'rot': 0}, {'t': 'entrance', 'x': 440, 'y': 560, 'label': 'Vchod', 'rot': 0}, {'t': 'kiosek', 'x': 620, 'y': 540, 'label': 'Kiosek oboustranný', 'rot': 0}],'code':'75','lat':50.0756,'lng':14.4326,'name':'I.P. Pavlova','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-835.png','type':'Obchodní centrum','addr':'Jugoslávsкá 675/3, 120 00 Praha 2','tel':'+420 604 786 462','email':'ippavlova@liberskelahudky.cz','vedouci':'Tetiana Kravets','vedouciTel':'+420 604 786 462','obchZast':'David Fendrych','wolt':'Ano','gmaps':'https://maps.app.goo.gl/2TL6p9ZEBH8gizD6A','firmy':'https://www.firmy.cz/company/13791731-liberske-lahudky-praha-vinohrady.html','web':'https://www.liberskelahudky.cz/prodejna/i-p-pavlova/','drive':'https://drive.google.com/drive/folders/1qYSqxg9OnADVYytcU6btigcWckdtkWPZ','barrier':true,'seating':false,'eshop':false,'kiosek':true,'vyroba':true,'hours':['6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','6:30-19:30','8:00-19:00','8:00-19:00'],'zmrzlina':3,'nfc':1,'lcd':4,'dvere':1,'okenko':true,'zmrzHours':'Po-Ne 10:00-18:00','zmrzVydej':true,'zmrzType':'okenko','saints':{},'exceptions':{}},
   {'id':'21','planogram':[{'t': 'tv', 'x': 370, 'y': 330, 'label': 'TV', 'rot': 0}, {'t': 'tv', 'x': 680, 'y': 330, 'label': 'TV', 'rot': 0}, {'t': 'counter', 'x': 320, 'y': 380, 'w': 120, 'h': 40, 'label': 'Sladké', 'rot': 0}, {'t': 'pokladna', 'x': 450, 'y': 385, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 490, 'y': 380, 'w': 60, 'h': 40, 'label': 'Pult', 'rot': 0}, {'t': 'pokladna', 'x': 550, 'y': 385, 'label': '', 'rot': 0}, {'t': 'counter', 'x': 580, 'y': 380, 'w': 90, 'h': 40, 'label': 'Sladké', 'rot': 0}, {'t': 'counter', 'x': 675, 'y': 380, 'w': 90, 'h': 40, 'label': 'Teplý bufet', 'rot': 0}, {'t': 'counter', 'x': 770, 'y': 380, 'w': 100, 'h': 40, 'label': 'Chlebíčky, saláty', 'rot': 0}, {'t': 'fridge', 'x': 720, 'y': 430, 'w': 70, 'h': 120, 'label': 'Lednice', 'rot': 0}, {'t': 'tv', 'x': 790, 'y': 470, 'label': 'TV', 'rot': 90}, {'t': 'entrance', 'x': 620, 'y': 520, 'label': 'Vchod', 'rot': 0}, {'t': 'kos', 'x': 440, 'y': 500, 'label': 'Koš', 'rot': 0}, {'t': 'table', 'x': 360, 'y': 500, 'label': 'stůl', 'rot': 0}, {'t': 'table', 'x': 540, 'y': 500, 'label': 'stůl', 'rot': 0}],'code':'76','lat':50.0724,'lng':14.3992,'name':'OC Nový Smíchov','photo':'https://www.lahudky.cz/wp-content/uploads/2026/03/Group-837.png','type':'Obchodní centrum','addr':'Štefániksкá 247/17, 150 00 Praha 5','tel':'+420 734 569 346','email':'novysmichov@liberskelahudky.cz','vedouci':'Irena Palinchak','vedouciTel':'+420 776 107 527','obchZast':'Richard Sviták','wolt':'Ano','gmaps':'https://maps.app.goo.gl/9cVgsccUyPj7Dbxx7','firmy':'','web':'https://www.liberskelahudky.cz/prodejna/novy-smichov/','drive':'https://drive.google.com/drive/folders/1i0w46HLoPysGJBdvQ0MLaG4PEVZckdo4','barrier':false,'seating':false,'eshop':true,'kiosek':false,'vyroba':true,'hours':['7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','7:00-19:00','8:00-19:00','8:00-19:00'],'zmrzlina':0,'nfc':0,'lcd':3,'dvere':0,'okenko':false,'zmrzHours':'','zmrzVydej':false,'zmrzType':'','saints':{},'exceptions':{}},
@@ -3431,6 +3461,7 @@ var clChecked = {};
 var sbFilters = {};
 var sbSort = 'num'; // 'num' or 'alpha'
 var isDirty = false;
+var _dataFromDefaults = false; // true = stores jsou jen vychozi skeleton, NESMI prepsat Sheets
 var currentView = 'live';
 
 // ─── SHEETS BACKEND ──────────────────────────────────────────────
@@ -3554,10 +3585,11 @@ function loadData() {
     } catch(e) {}
 
     if (!migrated) {
-      // Čistá instalace — výchozí data
+      // Čistá instalace — výchozí data (skeleton, nesmí přepsat Sheets)
       stores = JSON.parse(JSON.stringify(DEFAULT_STORES));
       stores.forEach(function(s){ if(!s.exceptions) s.exceptions={}; });
       _savedAt = 0;
+      _dataFromDefaults = true;
     }
     _hydrateStores();
 
@@ -3575,6 +3607,7 @@ function loadData() {
     stores = JSON.parse(JSON.stringify(DEFAULT_STORES));
     stores.forEach(function(s){ if(!s.exceptions) s.exceptions={}; });
     _savedAt = 0;
+    _dataFromDefaults = true;
   });
 }
 
@@ -3612,8 +3645,61 @@ function llLogHydrate() {
   idbGet('global_log').then(function(v){ if (Array.isArray(v)) _globalLog = v; }).catch(function(){});
   idbGet('log_synced').then(function(v){ if (v) _logSynced = v; }).catch(function(){});
 }
-function llLogPush(entryText, storeName) {
-  _globalLog.push({ t: Date.now(), who: (typeof getAuthor==='function' && getAuthor()) || '', store: storeName || '', txt: String(entryText||'') });
+// ─── v64: pole -> label + formatovani + snapshot/diff pro historii ───
+var _LL_FIELDS = {
+  name:'Název', code:'Číslo', type:'Typ', addr:'Adresa', tel:'Telefon', email:'E-mail',
+  vedouci:'Vedoucí', vedouciTel:'Tel. vedoucí', obchZast:'Obch. zástupce',
+  wolt:'Wolt', gmaps:'Google Maps', firmy:'Firmy.cz', web:'Web', drive:'Drive',
+  landlord:'Pronajímatel', landlordTel:'Tel. pronajímatel', landlordEmail:'E-mail pronajímatel',
+  leaseEnd:'Konec nájmu', area:'Plocha', mhd:'MHD', parking:'Parkování',
+  barrier:'Bezbariér', seating:'Posezení', eshop:'E-shop', kiosek:'Kiosek', vyroba:'Výroba',
+  trist:'Ledová tříšť', samoLednice:'Sam. lednice', okenko:'Okénko',
+  pokladny:'Pokladny', terminaly:'Terminály', glory:'Glory', vahy:'Váhy', typVahy:'Typ váhy',
+  lcd:'TV', nfc:'NFC', dvere:'Dveře', kavovar:'Kávovar', lednice:'Lednice', pos:'POS',
+  ledovac:'Ledovač', ledovacBox:'Ledový box', vysavacVelky:'Vysavač velký', vysavacRucni:'Vysavač ruční',
+  zmrzType:'Zmrzlina typ', zmrzlina:'Zmrzlina počet', zmrzHours:'Hodiny zmrzliny',
+  zmrzFoto:'Foto zmrzliny', zmrzNote:'Pozn. zmrzlina',
+  notes:'Poznámky', techNotes:'Tech. poznámky', leaseEndOld:'',
+  holidayFrom:'Prázdniny od', holidayTo:'Prázdniny do'
+};
+function llFmtVal(v) {
+  if (v === true) return 'Ano';
+  if (v === false) return 'Ne';
+  if (v === undefined || v === null || v === '') return '(prázdné)';
+  if (Array.isArray(v)) return v.join(', ') || '(prázdné)';
+  return String(v);
+}
+function llSnapshot(s) {
+  var snap = {};
+  Object.keys(_LL_FIELDS).forEach(function(f){ snap[f] = s[f]; });
+  snap.hours = (s.hours || []).slice();
+  return snap;
+}
+function llDiff(prev, s) {
+  var NUM = {pokladny:1,terminaly:1,glory:1,vahy:1,lcd:1,nfc:1,dvere:1,lednice:1,ledovac:1,ledovacBox:1,zmrzlina:1};
+  var BOOL = {barrier:1,seating:1,eshop:1,kiosek:1,vyroba:1,trist:1,samoLednice:1,okenko:1,vysavacVelky:1,vysavacRucni:1};
+  function normTime(x){ return String(x||'').replace(/[0-9]+/g, function(n){ return String(parseInt(n,10)); }); }
+  var out = [];
+  Object.keys(_LL_FIELDS).forEach(function(f){
+    if (!_LL_FIELDS[f]) return;
+    var a = prev[f], b = s[f], changed;
+    if (NUM[f])       changed = ((parseFloat(a)||0) !== (parseFloat(b)||0));
+    else if (BOOL[f]) changed = ((!!a) !== (!!b));
+    else              changed = (String(a==null?'':a).trim() !== String(b==null?'':b).trim());
+    if (changed) out.push({ label: _LL_FIELDS[f], old: llFmtVal(a), 'new': llFmtVal(b) });
+  });
+  var DAYS_K = ['Po','Út','St','Čt','Pá','So','Ne'];
+  var ph = prev.hours || [], nh = (s.hours || []);
+  for (var i=0;i<7;i++) {
+    if (normTime(ph[i]) !== normTime(nh[i])) {
+      out.push({ label: 'Hodiny '+DAYS_K[i], old: llFmtVal(ph[i]), 'new': llFmtVal(nh[i]) });
+    }
+  }
+  return out;
+}
+
+function llLogPush(entryText, storeName, changes) {
+  _globalLog.push({ t: Date.now(), who: (typeof getAuthor==='function' && getAuthor()) || '', store: storeName || '', txt: String(entryText||''), changes: changes || [] });
   if (_globalLog.length > 50) _globalLog = _globalLog.slice(-50);
   idbSet('global_log', _globalLog);
 }
@@ -3631,7 +3717,19 @@ function _histRow(e) {
     + '<span style="color:var(--ink-3);font-family:var(--font-mono);font-size:11px;">'+ds+'</span> '
     + (e.who ? '<b>'+e.who+'</b> · ' : '')
     + '<span style="color:var(--accent-d);font-weight:700;">'+(e.store||'')+'</span>'
-    + '<div style="color:var(--ink-2);margin-top:2px;">'+(e.txt||'')+'</div></div>';
+    + (e.changes && e.changes.length
+        ? '<div style="margin-top:4px;display:flex;flex-direction:column;gap:3px;">'
+          + e.changes.map(function(c){
+              return '<div style="font-size:12px;line-height:1.4;">'
+                + '<span style="color:var(--ink-3);font-weight:700;">'+pgEsc(c.label)+':</span> '
+                + '<span style="background:#FBE8E4;color:#9A3A2A;border-radius:4px;padding:0 5px;text-decoration:line-through;">'+pgEsc(c.old)+'</span>'
+                + ' <span style="color:var(--ink-3);">→</span> '
+                + '<span style="background:#E4F3E8;color:#2E7D46;border-radius:4px;padding:0 5px;font-weight:600;">'+pgEsc(c['new'])+'</span>'
+                + '</div>';
+            }).join('')
+          + '</div>'
+        : '<div style="color:var(--ink-2);margin-top:2px;">'+(e.txt||'')+'</div>')
+    + '</div>';
 }
 function openHistorie() {
   var old = document.getElementById('ll-hist-modal');
@@ -3751,7 +3849,8 @@ function loadFromSheets() {
     if (data && data.stores && data.stores.length > 0) {
       // Porovnej timestampy — lokální data mají přednost, pokud jsou novější
       var sheetsTs = data.savedAt || 0;
-      if (_savedAt > sheetsTs) {
+      // Reálná data ze Sheets → skeleton už neplatí
+      if (!_dataFromDefaults && _savedAt > sheetsTs) {
         // Lokální data jsou novější → Sheets je zastaralý, nechej lokální a re-ulož
         var age = Math.round((_savedAt - sheetsTs) / 60000);
         setBadge('Sheets zastaralý (lokální o ' + age + ' min novější) — ukládám…', true);
@@ -3805,10 +3904,16 @@ function loadFromSheets() {
 
       stores = sheetsData;
       _savedAt = sheetsTs || Date.now();
+      _dataFromDefaults = false; // máme reálná data ze Sheets
       safeSaveStores();
       idbSet('saved_at', _savedAt);
       renderSidebar();
       renderLiveGrid();
+      if (currentStoreIdx >= 0 && stores[currentStoreIdx]) {
+        fillStoreDetail(stores[currentStoreIdx]);
+        if (typeof syncAllChips === 'function') syncAllChips();
+        if (typeof refreshActiveDTab === 'function') refreshActiveDTab();
+      }
       setBadge('načteno ze Sheets ✓', false);
     } else {
       setBadge('Sheets prázdné – používám lokální data', false);
@@ -3824,6 +3929,11 @@ function loadFromSheets() {
 var _saveInFlight = false;
 function saveData() {
   var ts = Date.now();
+  // POJISTKA: nikdy neposílej do Sheets pouhý výchozí skeleton (vracelo by to staré adresy)
+  if (_dataFromDefaults) {
+    setBadge('výchozí data — čekám na Sheets, neukládám', true);
+    return;
+  }
   // Lokální uložení vždy hned (rychlé, offline cache) — neovlivněno Sheets
   _savedAt = ts;
   safeSaveStores();
@@ -3866,6 +3976,10 @@ function saveData() {
 
 function markDirty() {
   isDirty = true;
+  if (_dataFromDefaults) {
+    _dataFromDefaults = false;
+    if (typeof showToast === 'function') showToast('Pozor: upravuješ VÝCHOZÍ data — reálná data ze Sheets se zatím nenačetla', 'warn');
+  }
   setBadge('neuloženo', true);
 }
 
@@ -4323,11 +4437,7 @@ function renderSidebar() {
 }
 
 function filterSidebar() { renderSidebar(); }
-function toggleSbFilter(f, el) {
-  sbFilters[f] = !sbFilters[f];
-  el.classList.toggle('on', !!sbFilters[f]);
-  renderSidebar();
-}
+
 
 // ── Tri-stavovy filtr atributu: nic -> 'yes' (má) -> 'no' (nemá) -> nic ──
 function cycleFilter(f, el) {
@@ -4490,6 +4600,8 @@ function fillStoreDetail(s) {
   setV('f-ledovac', s.ledovac||0); setV('f-ledovac-box', s.ledovacBox||0);
   setV('f-typ-vahy', s.typVahy||'');
   setC('f-vys-velky', !!s.vysavacVelky); setC('f-vys-rucni', !!s.vysavacRucni);
+  if (typeof updateUrlTiles === 'function') updateUrlTiles();
+  if (typeof urlTileCloseEdit === 'function') urlTileCloseEdit();
   setC('f-okenko', !!s.okenko); setV('f-zmrz-hours', s.zmrzHours||'');
   setC('f-zmrz-vydej', !!s.zmrzVydej);
   setV('f-zmrz-foto', s.zmrzFoto||''); setV('f-zmrz-note', s.zmrzNote||'');
@@ -4574,6 +4686,37 @@ function updateMapLink() {
   }
 }
 
+// ─── v68: dlazdice online odkazu ───
+var _URL_FIELDS = ['gmaps','web','drive','firmy'];
+function updateUrlTiles() {
+  _URL_FIELDS.forEach(function(f){
+    var inp = document.getElementById('f-'+f);
+    var tile = document.getElementById('ut-'+f);
+    var state = document.getElementById('ut-'+f+'-state');
+    var open = document.getElementById('ut-'+f+'-open');
+    if (!inp || !tile) return;
+    var v = (inp.value||'').trim();
+    if (v) { tile.classList.add('filled'); if (state) state.textContent = '✓ vloženo'; if (open) open.href = v; }
+    else   { tile.classList.remove('filled'); if (state) state.textContent = '—'; if (open) open.href = '#'; }
+  });
+}
+function urlTileEdit(f) {
+  var wrap = document.getElementById('url-edit-wrap');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  _URL_FIELDS.forEach(function(x){
+    var row = document.getElementById('ue-'+x);
+    if (row) row.style.display = (x === f) ? 'flex' : 'none';
+  });
+  var inp = document.getElementById('f-'+f);
+  if (inp) { inp.focus(); }
+}
+function urlTileCloseEdit() {
+  var wrap = document.getElementById('url-edit-wrap');
+  if (wrap) wrap.style.display = 'none';
+  updateUrlTiles();
+}
+
 function updateGmapsLink() {
   var v = (document.getElementById('f-gmaps')||{}).value || '';
   v = v.trim();
@@ -4602,7 +4745,7 @@ function saveCurrentStore() {
   if (currentStoreIdx < 0) return;
   var s = stores[currentStoreIdx];
   var prevName = s.name;
-  var prevSnap = {addr:s.addr,tel:s.tel,vedouci:s.vedouci,wolt:s.wolt,gmaps:s.gmaps,zmrzHours:s.zmrzHours,zmrzFoto:s.zmrzFoto,notes:s.notes,hours:(s.hours||[]).slice()};
+  var prevSnap = (typeof llSnapshot==='function') ? llSnapshot(s) : {hours:(s.hours||[]).slice()};
 
   s.code = getV('f-id');
   s.name = (getV('f-name')||'').replace(/^[0-9]+\.\s*/, '');
@@ -4665,15 +4808,12 @@ function saveCurrentStore() {
   var ts = now.toLocaleDateString('cs-CZ')+' '+now.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
   if (!s.changelog) s.changelog=[];
   var _author = getAuthor();
-  var _changes = [];
-  var _prev = prevSnap || {};
-  var _fmap = {addr:'Adresa',tel:'Telefon',vedouci:'Vedoucí',wolt:'Wolt',gmaps:'Google Maps',zmrzHours:'Hodiny zmrzliny',zmrzFoto:'Foto zmrzliny',notes:'Poznámky'};
-  Object.keys(_fmap).forEach(function(f){ if(String(_prev[f]||'')!==String(s[f]||'')) _changes.push(_fmap[f]); });
-  var _hoursOld = (_prev.hours||[]).join(','), _hoursNew = (s.hours||[]).join(',');
-  if (_hoursOld !== _hoursNew) _changes.push('Hodiny');
-  var _entry = ts + (_author ? ' ['+_author+']' : '') + (_changes.length ? ' · '+_changes.join(', ') : '');
+  var _diff = (typeof llDiff === 'function') ? llDiff(prevSnap, s) : [];
+  var _changes = _diff.map(function(c){ return c.label; });
+  var _entry = ts + (_author ? ' ['+_author+']' : '')
+    + (_diff.length ? ' · ' + _diff.map(function(c){ return c.label+': '+c.old+' → '+c['new']; }).join('; ') : ' · (beze změny)');
   s.changelog.push(_entry);
-  if (typeof llLogPush === 'function') llLogPush((_changes.length ? _changes.join(', ') : 'úprava'), s.name);
+  if (typeof llLogPush === 'function') llLogPush((_changes.length ? _changes.join(', ') : 'úprava'), s.name, _diff);
   if (s.changelog.length>20) s.changelog = s.changelog.slice(-20);
 
   saveData();
@@ -4687,6 +4827,7 @@ function saveCurrentStore() {
 function deleteCurrentStore() {
   if (currentStoreIdx<0) return;
   if (!confirm('Opravdu smazat prodejnu "'+stores[currentStoreIdx].name+'"?')) return;
+  if (typeof llLogPush === 'function') llLogPush('PRODEJNA SMAZÁNA', stores[currentStoreIdx].name);
   stores.splice(currentStoreIdx,1);
   currentStoreIdx=-1;
   saveData();
@@ -6050,6 +6191,7 @@ function forceLoadFromSheets() {
 
 function forceSaveToSheets() {
   if (!USE_SHEETS || !SHEETS_URL) { alert('Sheets neni nastaveno.'); return; }
+  if (_dataFromDefaults) { alert('Toto jsou jen VÝCHOZÍ data (Sheets se zatím nenačetly).\nNeukládám, aby se nepřepsala sdílená data v Sheets.'); return; }
   var ts = Date.now();
   _savedAt = ts;
   safeSaveStores();
@@ -7493,10 +7635,9 @@ function revertCurrentStore() {
 // Volitelné "n" = jméno prodejny pro rozlišení duplicitních kódů (např. 51).
 // Import JEN DOPLŇUJE prázdné hodnoty — nikdy nepřepisuje vyplněné.
 var VYB_NUM  = ['glory','terminaly','ledovac','ledovacBox','vahy','pokladny','zmrzlina','lcd','lednice','nfc','dvere'];
-var VYB_TXT  = ['typVahy','pos','kavovar'];
 var VYB_BOOL = ['trist','kiosek','vysavacVelky','vysavacRucni','okenko','barrier','seating','eshop','vyroba','samoLednice'];
 
-function applyVybaveniImport(data) {
+function applyVybaveniImport(data, overwrite) {
   var list = [];
   if (Array.isArray(data)) list = data;
   else if (data && typeof data === 'object') {
@@ -7506,7 +7647,17 @@ function applyVybaveniImport(data) {
       list.push(row);
     });
   }
-  var stats = { prodejen: 0, doplneno: 0, preskoceno: 0, nenalezeno: [] };
+  var FLOAT = {lat:1, lng:1};
+  var NUM = VYB_NUM;
+  var BOOL = VYB_BOOL;
+  // povolena textova pole (vc. adresy a kontaktu)
+  var TXT = {typVahy:1,pos:1,kavovar:1,addr:1,tel:1,email:1,vedouci:1,vedouciTel:1,obchZast:1,
+             wolt:1,gmaps:1,firmy:1,web:1,drive:1,landlord:1,landlordTel:1,landlordEmail:1,
+             leaseEnd:1,area:1,mhd:1,parking:1,zmrzHours:1,zmrzType:1,notes:1,name:1};
+  var isNum = {}; NUM.forEach(function(f){ isNum[f]=1; });
+  var isBool = {}; BOOL.forEach(function(f){ isBool[f]=1; });
+
+  var stats = { prodejen: 0, doplneno: 0, prepsano: 0, preskoceno: 0, nenalezeno: [] };
   list.forEach(function(row){
     var code = String(row.code || row.cislo || '');
     if (!code) return;
@@ -7518,24 +7669,38 @@ function applyVybaveniImport(data) {
       for (var i=0;i<cands.length;i++) if (cands[i].name === hint) { s = cands[i]; break; }
     }
     var touched = false;
-    VYB_NUM.forEach(function(f){
-      if (row[f] == null) return;
-      if (s[f] > 0) { stats.preskoceno++; return; }
-      s[f] = parseInt(row[f],10)||0; stats.doplneno++; touched = true;
-    });
-    VYB_TXT.forEach(function(f){
-      if (row[f] == null || row[f] === '') return;
-      if (s[f]) { stats.preskoceno++; return; }
-      s[f] = String(row[f]); stats.doplneno++; touched = true;
-    });
-    VYB_BOOL.forEach(function(f){
-      if (!row[f]) return;
-      if (s[f]) { stats.preskoceno++; return; }
-      s[f] = true; stats.doplneno++; touched = true;
+    if (Array.isArray(row.hours) && row.hours.length === 7) {
+      var hoursFilled = Array.isArray(s.hours) && s.hours.some(function(x){ return x; });
+      if (hoursFilled && !overwrite) { stats.preskoceno++; }
+      else if (JSON.stringify(s.hours||[]) !== JSON.stringify(row.hours)) {
+        s.hours = row.hours.slice();
+        if (hoursFilled) stats.prepsano++; else stats.doplneno++;
+        touched = true;
+      }
+    }
+    Object.keys(row).forEach(function(f){
+      if (f === 'code' || f === 'cislo' || f === 'n' || f === 'hours') return;
+      if (!(FLOAT[f] || isNum[f] || isBool[f] || TXT[f])) return; // neznámé pole ignoruj
+      var val;
+      if (FLOAT[f])       val = parseFloat(row[f]);
+      else if (isNum[f])  val = parseInt(row[f],10)||0;
+      else if (isBool[f]) val = !!row[f];
+      else                val = String(row[f]);
+      if (FLOAT[f] && isNaN(val)) return;
+
+      // je aktuální hodnota "vyplněná"?
+      var cur = s[f];
+      var filled = (isBool[f]) ? !!cur : (cur !== undefined && cur !== null && cur !== '' && !(isNum[f] && !(cur>0)) && !(FLOAT[f] && !cur));
+      if (filled && !overwrite) { stats.preskoceno++; return; }
+      if (String(cur === undefined ? '' : cur) === String(val)) return; // beze změny
+      s[f] = val;
+      if (filled) stats.prepsano++; else stats.doplneno++;
+      touched = true;
     });
     if (touched) stats.prodejen++;
   });
-  if (stats.doplneno) {
+
+  if (stats.doplneno || stats.prepsano) {
     markDirty();
     if (typeof renderSidebar === 'function') renderSidebar();
     if (typeof currentStoreIdx !== 'undefined' && currentStoreIdx >= 0 && stores[currentStoreIdx]) {
@@ -7543,6 +7708,8 @@ function applyVybaveniImport(data) {
       if (typeof syncAllChips === 'function') syncAllChips();
       if (typeof refreshActiveDTab === 'function') refreshActiveDTab();
     }
+    // Ulož do Sheets, aby se oprava propsala i ostatním
+    if (typeof saveData === 'function') saveData();
   }
   return stats;
 }
@@ -7563,12 +7730,16 @@ function importVybaveniJSON() {
         try { data = JSON.parse(r.result); }
         catch(e){ if (typeof showToast==='function') showToast('Neplatný JSON: '+e.message,'err'); else alert('Neplatný JSON'); return; }
         try {
-          var st = applyVybaveniImport(data);
-          var msg = 'Import: doplněno '+st.doplneno+' hodnot u '+st.prodejen+' prodejen'
-                  + (st.preskoceno ? ', '+st.preskoceno+'× přeskočeno (už vyplněno)' : '')
-                  + (st.nenalezeno.length ? ', nenalezeny kódy: '+st.nenalezeno.join(', ') : '');
+          var overwrite = confirm('Přepsat i UŽ VYPLNĚNÉ hodnoty?\n\nOK = ano, oprav i vyplněná pole (použij pro OPRAVU špatných dat v Sheets)\nZrušit = jen doplnit prázdná (bezpečné)');
+          var st = applyVybaveniImport(data, overwrite);
+          var msg = 'Import: doplněno '+st.doplneno
+                  + (st.prepsano ? ', přepsáno '+st.prepsano : '')
+                  + ' hodnot u '+st.prodejen+' prodejen'
+                  + (st.preskoceno ? ', '+st.preskoceno+'× přeskočeno' : '')
+                  + (st.nenalezeno.length ? ', nenalezeny kódy: '+st.nenalezeno.join(', ') : '')
+                  + (st.prepsano||st.doplneno ? ' — ukládám do Sheets…' : '');
           if (typeof showToast==='function') showToast(msg, 'ok'); else alert(msg);
-        } catch(e2){ if (typeof showToast==='function') showToast('Import selhal: '+e2.message,'err'); }
+        } catch(e2){ if (typeof showToast==='function') showToast('Import selhal: '+e2.message,'err'); else alert('Import selhal: '+e2.message); }
         inp.value = '';
       };
       r.readAsText(f, 'utf-8');
@@ -7585,12 +7756,13 @@ loadData()
     if (!Array.isArray(stores) || stores.length === 0) needsReset = true;
     else if (!stores.some(function(s){ return s && typeof s.name === 'string' && s.id; })) needsReset = true;
     if (needsReset) {
-      console.warn('[safety] stores empty or invalid — resetting to DEFAULT_STORES');
+      console.warn('[safety] stores empty or invalid — resetting to DEFAULT_STORES (skeleton, čeká na Sheets)');
       stores = JSON.parse(JSON.stringify(DEFAULT_STORES));
       stores.forEach(function(s){ if(!s.exceptions) s.exceptions={}; });
-      _savedAt = Date.now();
+      _savedAt = 0;                 // NE Date.now() — jinak by se skeleton tvářil jako nejnovější a přepsal Sheets
+      _dataFromDefaults = true;     // blokuje push do Sheets, dokud nedorazí reálná data
       safeSaveStores();
-      idbSet('saved_at', _savedAt);
+      idbSet('saved_at', 0);
     }
     return runDataMigration();
   })
