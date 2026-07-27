@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>/* ╔════════════════════════════════════════════════════════════════╗
    ║  LIBEŘSKÉ LAHŮDKY — DATABÁZE PRODEJEN v49                      ║
-   ║  NEW: v68 dlazdice odkazu + opravy z revize kodu      ║
+   ║  NEW: v69 dlazdice klik=otevrit, tuzka=upravit       ║
    ║  Warm editorial dashboard · Fraunces + Geist + JetBrains Mono  ║
    ╚════════════════════════════════════════════════════════════════╝ */
 
@@ -2271,9 +2271,9 @@ input.sb-search:focus {
 .ut-name { font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--ink-2); }
 .ut-state { font-size:10px; color:var(--ink-3); }
 .url-tile.filled .ut-state { color:#2E7D46; font-weight:700; }
-.ut-open { position:absolute; top:3px; right:6px; font-size:12px; text-decoration:none;
-  color:var(--accent-d); display:none; padding:2px; }
-.url-tile.filled .ut-open { display:block; }
+.ut-edit { position:absolute; top:2px; right:5px; font-size:11px; color:var(--ink-3);
+  cursor:pointer; padding:2px 4px; border-radius:4px; }
+.ut-edit:hover { color:var(--accent-d); background:var(--paper-2); }
 .url-edit-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
 .url-edit-row input { flex:1; }
 </style>
@@ -2642,20 +2642,20 @@ input.sb-search:focus {
                 <button class="wolt-chip" id="wolt-chip-btn" onclick="toggleWolt()">Wolt</button>
               </div>
               <div class="url-tiles">
-                <div class="url-tile" id="ut-gmaps" onclick="urlTileEdit('gmaps')" title="Klik = upravit odkaz">
-                  <a class="ut-open" id="ut-gmaps-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                <div class="url-tile" id="ut-gmaps" onclick="urlTileClick('gmaps')" title="Klik = otevřít odkaz">
+                  <span class="ut-edit" onclick="event.stopPropagation();urlTileEdit('gmaps')" title="Upravit odkaz">✎</span>
                   <span class="ut-ico">🗺</span><span class="ut-name">Maps</span><span class="ut-state" id="ut-gmaps-state">—</span>
                 </div>
-                <div class="url-tile" id="ut-web" onclick="urlTileEdit('web')" title="Klik = upravit odkaz">
-                  <a class="ut-open" id="ut-web-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                <div class="url-tile" id="ut-web" onclick="urlTileClick('web')" title="Klik = otevřít odkaz">
+                  <span class="ut-edit" onclick="event.stopPropagation();urlTileEdit('web')" title="Upravit odkaz">✎</span>
                   <span class="ut-ico">🌐</span><span class="ut-name">Web</span><span class="ut-state" id="ut-web-state">—</span>
                 </div>
-                <div class="url-tile" id="ut-drive" onclick="urlTileEdit('drive')" title="Klik = upravit odkaz">
-                  <a class="ut-open" id="ut-drive-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                <div class="url-tile" id="ut-drive" onclick="urlTileClick('drive')" title="Klik = otevřít odkaz">
+                  <span class="ut-edit" onclick="event.stopPropagation();urlTileEdit('drive')" title="Upravit odkaz">✎</span>
                   <span class="ut-ico">💾</span><span class="ut-name">Drive</span><span class="ut-state" id="ut-drive-state">—</span>
                 </div>
-                <div class="url-tile" id="ut-firmy" onclick="urlTileEdit('firmy')" title="Klik = upravit odkaz">
-                  <a class="ut-open" id="ut-firmy-open" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Otevřít">↗</a>
+                <div class="url-tile" id="ut-firmy" onclick="urlTileClick('firmy')" title="Klik = otevřít odkaz">
+                  <span class="ut-edit" onclick="event.stopPropagation();urlTileEdit('firmy')" title="Upravit odkaz">✎</span>
                   <span class="ut-ico">🏢</span><span class="ut-name">Firmy</span><span class="ut-state" id="ut-firmy-state">—</span>
                 </div>
               </div>
@@ -4693,12 +4693,19 @@ function updateUrlTiles() {
     var inp = document.getElementById('f-'+f);
     var tile = document.getElementById('ut-'+f);
     var state = document.getElementById('ut-'+f+'-state');
-    var open = document.getElementById('ut-'+f+'-open');
     if (!inp || !tile) return;
     var v = (inp.value||'').trim();
-    if (v) { tile.classList.add('filled'); if (state) state.textContent = '✓ vloženo'; if (open) open.href = v; }
-    else   { tile.classList.remove('filled'); if (state) state.textContent = '—'; if (open) open.href = '#'; }
+    if (v) { tile.classList.add('filled'); if (state) state.textContent = '✓ otevřít ↗'; }
+    else   { tile.classList.remove('filled'); if (state) state.textContent = 'doplň ✎'; }
   });
+}
+function urlTileClick(f) {
+  var inp = document.getElementById('f-'+f);
+  var v = inp ? (inp.value||'').trim() : '';
+  if (!v) { urlTileEdit(f); return; }  // prazdna dlazdice -> rovnou doplneni
+  var link = document.getElementById('f-'+f+'-link');
+  var href = (link && link.href && link.href.charAt(link.href.length-1) !== '#') ? link.href : v;
+  window.open(href, '_blank', 'noopener');
 }
 function urlTileEdit(f) {
   var wrap = document.getElementById('url-edit-wrap');
