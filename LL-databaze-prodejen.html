@@ -564,7 +564,7 @@ input.sb-search:focus {
   min-width: 0;
 }
 .dt-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-#dt-badge-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dt-badge-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .dt-code-badge {
   display: inline-flex; align-items: center;
   font-family: var(--font-mono);
@@ -583,6 +583,31 @@ input.sb-search:focus {
 }
 .dt-meta-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
+/* --- DOPLNENO: tridy pouzite v horni liste, ktere nemely zadnou CSS definici --- */
+.clock-display {
+  font-family: var(--font-mono);
+  font-size: 12px; font-weight: 600;
+  color: var(--ink-3);
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.save-badge {
+  font-size: 11px; font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--accent-pale);
+  color: var(--accent-d);
+  border: 1px solid var(--accent-line);
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+.save-badge.dirty { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+.save-badge.err   { background: #FEE2E2; color: #991B1B; border-color: #FECACA; }
+
 .dt-name {
   font-family: var(--display); font-weight: 700;
   font-size: 26px; letter-spacing: -0.02em;
@@ -593,7 +618,7 @@ input.sb-search:focus {
 }
 .dt-addr { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
 #dt-photo-wrap { display: none !important; }
-#dt-live-status .lc-status { font-size: 10px !important; padding: 2px 8px !important; }
+.dt-live-status .lc-status { font-size: 10px !important; padding: 2px 8px !important; }
 
 /* Hero action buttons — now sit on photo, top-right */
 .dt-save-btn {
@@ -2491,12 +2516,12 @@ input.sb-search:focus {
             <div class="dt-meta-row">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 <button id="mob-back-btn" onclick="toggleMobileMenu()" style="display:none;background:var(--paper-2);border:1px solid var(--line);font-size:16px;cursor:pointer;color:var(--ink);padding:3px 8px;border-radius:8px;line-height:1;">&#8249;</button>
-                <div id="dt-badge-row">
-                  <span class="dt-code-badge" id="dt-code-badge">#—</span>
-                  <span class="dt-type-tag" id="dt-type-tag">—</span>
+                <div class="dt-badge-row">
+                  <span class="dt-code-badge">#—</span>
+                  <span class="dt-type-tag">—</span>
                 </div>
               </div>
-              <div id="dt-live-status"></div>
+              <div class="dt-live-status"></div>
             </div>
             <div class="dt-name" id="dt-name"></div>
             <div class="dt-addr" id="dt-addr"></div>
@@ -2507,14 +2532,14 @@ input.sb-search:focus {
             <div class="dt-hero-empty" id="dt-hero-empty">🏪</div>
             <div class="dt-hero-top">
             <div style="display:flex;align-items:center;gap:6px;">
-              <button id="mob-back-btn" onclick="toggleMobileMenu()" style="display:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(8px);font-size:18px;cursor:pointer;color:white;padding:3px 8px;border-radius:8px;line-height:1;">&#8249;</button>
-              <div id="dt-badge-row">
-                <span class="dt-code-badge" id="dt-code-badge">#—</span>
-                <span class="dt-type-tag" id="dt-type-tag">—</span>
+              <button id="mob-back-btn-2" onclick="toggleMobileMenu()" style="display:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(8px);font-size:18px;cursor:pointer;color:white;padding:3px 8px;border-radius:8px;line-height:1;">&#8249;</button>
+              <div class="dt-badge-row">
+                <span class="dt-code-badge">#—</span>
+                <span class="dt-type-tag">—</span>
               </div>
             </div>
             <div class="dt-meta-right">
-              <div id="dt-live-status"></div>
+              <div class="dt-live-status"></div>
             </div>
           </div>
           </div><!-- /dt-hero-img-wrap -->
@@ -4567,7 +4592,7 @@ function fillStoreDetail(s) {
 
   var st = getStoreStatus(s);
   var _statusHtml = '<span class="lc-status '+st.status+'" style="font-size:12px;padding:4px 10px;">'+st.label+'</span>';
-  var _stEls = document.querySelectorAll('#dt-live-status');
+  var _stEls = document.querySelectorAll('.dt-live-status');
   for (var _si=0; _si<_stEls.length; _si++) _stEls[_si].innerHTML = _statusHtml;
 
   // Základní info
@@ -4655,10 +4680,14 @@ function onFieldChange() {
   var name = getV('f-name');
   document.getElementById('dt-name').textContent = name || '—';
   document.getElementById('dt-addr').textContent = getV('f-addr') || 'Adresa není zadána';
-  var codeBadge = document.getElementById('dt-code-badge');
-  var typeTag   = document.getElementById('dt-type-tag');
-  if (codeBadge) codeBadge.textContent = '#' + (getV('f-id') || '—');
-  if (typeTag)   typeTag.textContent   = getV('f-type') || '—';
+  // POZOR: dt-code-badge / dt-type-tag jsou v HTML DVAKRAT (levy sloupec + prekryv na fotce).
+  // getElementById by aktualizoval jen prvni -> druhy by zustal na "#—". Proto querySelectorAll.
+  var _cbs = document.querySelectorAll('.dt-code-badge');
+  var _tts = document.querySelectorAll('.dt-type-tag');
+  var _codeTxt = '#' + (getV('f-id') || '—');
+  var _typeTxt = getV('f-type') || '—';
+  for (var _i=0; _i<_cbs.length; _i++) { _cbs[_i].textContent = _codeTxt; }
+  for (var _j=0; _j<_tts.length; _j++) { _tts[_j].textContent = _typeTxt; }
 }
 
 function previewZmrzFoto() {
@@ -6724,12 +6753,20 @@ function printZmrzlinaPlakat() {
 var plakatClosed = {};
 
 function initPlakat() {
-  // Naplnit select
+  // Naplnit select - VZDY prestavet, aby se nove pridane prodejny objevily
   var sel = document.getElementById('pk-store');
-  if (sel.options.length <= 1) {
-    stores.forEach(function(s,i){
-      var o=document.createElement('option'); o.value=i; o.textContent=s.name; sel.appendChild(o);
-    });
+  var prevVal = sel.value;
+  var prevName = (sel.selectedIndex > 0) ? sel.options[sel.selectedIndex].textContent : '';
+  sel.innerHTML = '<option value="">— vyber prodejnu —</option>';
+  stores.forEach(function(s,i){
+    var o=document.createElement('option'); o.value=i; o.textContent=s.name; sel.appendChild(o);
+  });
+  // obnovit predchozi vyber - prednostne podle nazvu (indexy se mohou posunout)
+  if (prevName) {
+    var found = -1;
+    for (var pi=0; pi<stores.length; pi++) { if (stores[pi] && stores[pi].name === prevName) { found = pi; break; } }
+    if (found >= 0) sel.value = found;
+    else if (prevVal !== '' && stores[parseInt(prevVal,10)]) sel.value = prevVal;
   }
   // Pokud je vybraná prodejna v detailu, předvyplnit
   if (currentStoreIdx >= 0 && sel.value === '') {
@@ -7208,11 +7245,30 @@ function initMap() {
   if (mc && mc.getAttribute('data-err')) { mc.innerHTML = ''; mc.removeAttribute('data-err'); }
   if (!mapInstance) {
     mapInstance = L.map('map-leaflet', {zoomControl: true}).setView([50.073, 14.437], 11);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
-      maxZoom: 19,
-      subdomains: 'abcd'
-    }).addTo(mapInstance);
+    // ---------------------------------------------------------------
+    // DLAZDICE MAPY
+    // CARTO od 28.8.2026 pres keylessove rastrove dlazdice tiskne vodotisk
+    // "API KEY REQUIRED". Proto se defaultne pouzivaji dlazdice primo z
+    // OpenStreetMap - jsou bez klice a ciste.
+    //
+    // Chces-li zpet vzhled CARTO Voyager: zaloz si zdarma klic na
+    // https://carto.com/basemaps/apikey/ (5 mil. dlazdic/mesic zdarma)
+    // a vloz ho do CARTO_KEY nize. Prazdny retezec = pouzije se OSM.
+    // ---------------------------------------------------------------
+    var CARTO_KEY = '';
+
+    if (CARTO_KEY) {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=' + CARTO_KEY, {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+        maxZoom: 19,
+        subdomains: 'abcd'
+      }).addTo(mapInstance);
+    } else {
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> přispěvatelé',
+        maxZoom: 19
+      }).addTo(mapInstance);
+    }
   }
   renderMapMarkers();
   // Probuzení mapy — bez invalidateSize zůstane po zobrazení skrytého panelu bílá
